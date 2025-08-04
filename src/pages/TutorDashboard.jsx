@@ -332,10 +332,10 @@ const TutorDashboard = () => {
                       </div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="badge badge-info text-xs">
-                          {question.category_name || 'Unknown Category'}
+                          {question.categories?.name || question.category_name || 'Unknown Category'}
                         </span>
                         <span className="badge badge-warning text-xs">
-                          {question.difficulty_name || 'Unknown Difficulty'}
+                          {question.difficulty_levels?.name || question.difficulty_name || 'Unknown Difficulty'}
                         </span>
                       </div>
                       <p className="text-xs text-gray-500">

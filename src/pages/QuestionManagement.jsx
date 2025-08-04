@@ -28,6 +28,8 @@ const QuestionManagement = () => {
     difficulty_id: '',
     question_text: '',
     explanation: '',
+    image_url: '',
+    audio_url: '',
     options: [
       { text: '', is_correct: false },
       { text: '', is_correct: false },
@@ -133,6 +135,8 @@ const QuestionManagement = () => {
       difficulty_id: '',
       question_text: '',
       explanation: '',
+      image_url: '',
+      audio_url: '',
       options: [
         { text: '', is_correct: false },
         { text: '', is_correct: false },
@@ -173,6 +177,8 @@ const QuestionManagement = () => {
       difficulty_id: question.difficulty_id || '',
       question_text: question.question_text || '',
       explanation: question.explanation || '',
+      image_url: question.image_url || '',
+      audio_url: question.audio_url || '',
       options: normalizedOptions
     });
     setEditingQuestion(question);
@@ -269,6 +275,8 @@ const QuestionManagement = () => {
         difficulty_id: parseInt(formData.difficulty_id),
         question_text: formData.question_text,
         explanation: formData.explanation || null,
+        image_url: formData.image_url || null,
+        audio_url: formData.audio_url || null,
         options: formData.options.map(option => ({
           option_text: option.text,
           is_correct: option.is_correct
@@ -407,7 +415,9 @@ const QuestionManagement = () => {
               const questionOptions = question.options || [];
               const categoryName = question.categories?.name || question.category_name || 'Unknown Category';
               const difficultyName = question.difficulty_levels?.name || question.difficulty_name || 'Unknown Difficulty';
-              const creatorName = question.users ? 
+              const creatorName = question.created_by_user ? 
+                `${question.created_by_user.first_name || ''} ${question.created_by_user.last_name || ''}`.trim() || 'Unknown' :
+                question.users ? 
                 `${question.users.first_name || ''} ${question.users.last_name || ''}`.trim() || 'Unknown' :
                 question.creator_name || 'Unknown';
 
@@ -575,6 +585,39 @@ const QuestionManagement = () => {
                       placeholder="Enter your question here..."
                       required
                     />
+                  </div>
+
+                  {/* Media Fields */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="form-group">
+                      <label className="form-label">Image URL (Optional)</label>
+                      <input
+                        type="url"
+                        name="image_url"
+                        value={formData.image_url}
+                        onChange={handleFormChange}
+                        className="form-control"
+                        placeholder="https://example.com/image.jpg"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Add an image to accompany your question
+                      </p>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Audio URL (Optional)</label>
+                      <input
+                        type="url"
+                        name="audio_url"
+                        value={formData.audio_url}
+                        onChange={handleFormChange}
+                        className="form-control"
+                        placeholder="https://example.com/audio.mp3"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Add audio for listening comprehension questions
+                      </p>
+                    </div>
                   </div>
 
                   <div className="form-group">

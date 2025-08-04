@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { feedbackService, usersService } from '../services/supabaseService.js';
 import { toast } from 'react-toastify';
 import Loading from '../components/Loading.jsx';
-import { MessageSquare, Plus, Edit, Trash2, Search, Send, X, Save } from 'lucide-react';
+import { MessageSquare, Plus, Edit, Trash2, Search, Send, X, Save, Star } from 'lucide-react';
 
 const FeedbackManagement = () => {
   const [loading, setLoading] = useState(true);
@@ -19,7 +19,8 @@ const FeedbackManagement = () => {
     student_id: '',
     feedback_text: '',
     recommendations: '',
-    attempt_id: ''
+    attempt_id: '',
+    rating: 0
   });
 
   useEffect(() => {
@@ -33,15 +34,16 @@ const FeedbackManagement = () => {
   const fetchInitialData = async () => {
     try {
       const studentsRes = await usersService.getStudents();
+
       if (studentsRes.success) {
-        setStudents(studentsRes.data || []);
+        setStudents(studentsRes.data?.users || []);
       } else {
-        toast.error(studentsRes.error || 'Failed to load students');
+        toast.error('Failed to load students');
         setStudents([]);
       }
     } catch (error) {
-      console.error('Error fetching students:', error);
-      toast.error('Failed to load students');
+      console.error('Error fetching initial data:', error);
+      toast.error('Failed to load initial data');
       setStudents([]);
     }
   };
@@ -89,7 +91,8 @@ const FeedbackManagement = () => {
       student_id: '',
       feedback_text: '',
       recommendations: '',
-      attempt_id: ''
+      attempt_id: '',
+      rating: 0
     });
     setEditingFeedback(null);
   };
@@ -104,7 +107,8 @@ const FeedbackManagement = () => {
       student_id: feedbackItem.student_id,
       feedback_text: feedbackItem.feedback_text,
       recommendations: feedbackItem.recommendations || '',
-      attempt_id: feedbackItem.attempt_id || ''
+      attempt_id: feedbackItem.attempt_id || '',
+      rating: feedbackItem.rating || 0
     });
     setEditingFeedback(feedbackItem);
     setShowModal(true);
@@ -139,6 +143,13 @@ const FeedbackManagement = () => {
     }));
   };
 
+  const handleRatingChange = (rating) => {
+    setFormData(prev => ({
+      ...prev,
+      rating
+    }));
+  };
+
   const validateForm = () => {
     if (!formData.student_id) {
       toast.error('Please select a student');
@@ -163,7 +174,8 @@ const FeedbackManagement = () => {
         student_id: parseInt(formData.student_id),
         feedback_text: formData.feedback_text,
         recommendations: formData.recommendations || null,
-        attempt_id: formData.attempt_id ? parseInt(formData.attempt_id) : null
+        attempt_id: formData.attempt_id ? parseInt(formData.attempt_id) : null,
+        rating: formData.rating > 0 ? formData.rating : null
       };
 
       let response;
@@ -206,6 +218,7 @@ const FeedbackManagement = () => {
             Give Feedback
           </button>
         </div>
+
 
         {/* Filters */}
         <div className="card mb-6">
@@ -283,29 +296,47 @@ const FeedbackManagement = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-2">
                         <h3 className="font-semibold text-lg">
-                          {item.student_first_name} {item.student_last_name}
+                          To: {item.student?.first_name} {item.student?.last_name}
                         </h3>
                         <span className="text-sm text-gray-500">
                           {new Date(item.created_at).toLocaleDateString()}
                         </span>
                       </div>
                       
-                      {item.category_name && (
+                      {item.quiz_attempts && (
                         <div className="flex items-center gap-2 mb-3">
                           <span className="badge badge-info">
-                            {item.category_name}
+                            {item.quiz_attempts.categories?.name}
                           </span>
                           <span className="badge badge-warning">
-                            {item.difficulty_name}
+                            {item.quiz_attempts.difficulty_levels?.name}
                           </span>
-                          {item.score !== null && (
+                          {item.quiz_attempts.score !== null && (
                             <span className={`badge ${
-                              item.score >= 80 ? 'badge-success' : 
-                              item.score >= 60 ? 'badge-warning' : 'badge-error'
+                              item.quiz_attempts.score >= 80 ? 'badge-success' : 
+                              item.quiz_attempts.score >= 60 ? 'badge-warning' : 'badge-error'
                             }`}>
-                              Score: {item.score}%
+                              Score: {item.quiz_attempts.score}%
                             </span>
                           )}
+                        </div>
+                      )}
+                      
+                      {item.rating && (
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-sm text-gray-600">Rating:</span>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                size={16}
+                                className={star <= item.rating ? 'text-yellow-500 fill-current' : 'text-gray-300'}
+                              />
+                            ))}
+                            <span className="text-sm text-gray-600 ml-1">
+                              ({item.rating}/5)
+                            </span>
+                          </div>
                         </div>
                       )}
                       
@@ -315,9 +346,33 @@ const FeedbackManagement = () => {
                       </div>
                       
                       {item.recommendations && (
-                        <div className="bg-green-50 p-4 rounded-lg">
+                        <div className="bg-green-50 p-4 rounded-lg mb-3">
                           <h4 className="font-medium text-green-800 mb-2">Recommendations:</h4>
                           <p className="text-green-700">{item.recommendations}</p>
+                        </div>
+                      )}
+                      
+                      {item.student_feedback && (
+                        <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
+                          <h4 className="font-medium text-purple-800 mb-2">Feedback from Student:</h4>
+                          <p className="text-purple-700 mb-2">{item.student_feedback.feedback_text}</p>
+                          {item.student_feedback.rating && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-purple-600">Student Rating:</span>
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    size={14}
+                                    className={star <= item.student_feedback.rating ? 'text-yellow-500 fill-current' : 'text-gray-300'}
+                                  />
+                                ))}
+                                <span className="text-sm text-purple-600 ml-1">
+                                  ({item.student_feedback.rating}/5)
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -431,6 +486,41 @@ const FeedbackManagement = () => {
                       placeholder="Provide detailed feedback to help the student improve..."
                       required
                     />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Rating (Optional)</label>
+                    <div className="flex items-center gap-2 mb-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => handleRatingChange(star)}
+                          className={`p-1 rounded transition-colors ${
+                            star <= formData.rating
+                              ? 'text-yellow-500 hover:text-yellow-600'
+                              : 'text-gray-300 hover:text-gray-400'
+                          }`}
+                        >
+                          <Star
+                            size={24}
+                            fill={star <= formData.rating ? 'currentColor' : 'none'}
+                          />
+                        </button>
+                      ))}
+                      <span className="ml-2 text-sm text-gray-600">
+                        {formData.rating > 0 && (
+                          <>
+                            {formData.rating} out of 5 stars
+                            {formData.rating === 1 && ' - Poor'}
+                            {formData.rating === 2 && ' - Fair'}
+                            {formData.rating === 3 && ' - Good'}
+                            {formData.rating === 4 && ' - Very Good'}
+                            {formData.rating === 5 && ' - Excellent'}
+                          </>
+                        )}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="form-group">

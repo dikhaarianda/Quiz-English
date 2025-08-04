@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { quizService } from '../services/supabaseService.js';
+import { quizService, feedbackService } from '../services/supabaseService.js';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import Loading from '../components/Loading.jsx';
-import { ArrowLeft, CheckCircle, XCircle, Award, Clock, BookOpen, TrendingUp } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Award, Clock, BookOpen, TrendingUp, MessageSquare, Star } from 'lucide-react';
 
 const QuizResults = () => {
   const { attemptId } = useParams();
@@ -13,17 +13,21 @@ const QuizResults = () => {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState(null);
   const [showExplanations, setShowExplanations] = useState(true);
+  const [tutorFeedback, setTutorFeedback] = useState([]);
 
   useEffect(() => {
     fetchResults();
+    fetchTutorFeedback();
   }, [attemptId]);
 
   const fetchResults = async () => {
     try {
-      const response = await quizService.getQuizResults(attemptId);
+      const response = await quizService.getQuizResult(attemptId);
       
-      if (!response.success) {
-        toast.error(response.error || 'Failed to load quiz results');
+      console.log('Quiz result response:', response);
+      
+      if (!response || !response.success) {
+        toast.error(response?.error || 'Failed to load quiz results');
         setResults(null);
         return;
       }
@@ -35,6 +39,22 @@ const QuizResults = () => {
       setResults(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTutorFeedback = async () => {
+    try {
+      const response = await feedbackService.getFeedbackByAttempt(attemptId);
+      
+      if (response && response.success) {
+        setTutorFeedback(response.data || []);
+      } else {
+        console.log('No tutor feedback found for this attempt');
+        setTutorFeedback([]);
+      }
+    } catch (error) {
+      console.error('Error fetching tutor feedback:', error);
+      setTutorFeedback([]);
     }
   };
 
@@ -299,16 +319,6 @@ const QuizResults = () => {
           <Link to={getBackLink()} className="btn btn-primary">
             {getBackText()}
           </Link>
-          
-          {/* Only show retake button for students */}
-          {canRetakeQuiz() && (
-            <Link 
-              to={`/student/${user.id}/quiz/${attempt.category_id}/${attempt.difficulty_id}`} 
-              className="btn btn-outline"
-            >
-              Retake Quiz
-            </Link>
-          )}
 
           {/* Add feedback button for tutors */}
           {user && ['tutor', 'super_tutor'].includes(user.role) && (
@@ -320,6 +330,92 @@ const QuizResults = () => {
             </button>
           )}
         </div>
+
+        {/* Tutor Feedback Section */}
+        {tutorFeedback && tutorFeedback.length > 0 && (
+          <div className="card mt-8">
+            <div className="card-header">
+              <h3 className="card-title flex items-center gap-2">
+                <MessageSquare size={20} />
+                Tutor Feedback ({tutorFeedback.length})
+              </h3>
+            </div>
+            <div className="card-body">
+              <div className="space-y-6">
+                {tutorFeedback.map(feedback => (
+                  <div key={feedback.id} className="border-l-4 border-blue-500 pl-6 py-4 bg-blue-50 rounded-r-lg">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-semibold text-blue-800 text-lg">
+                          From: {feedback.users?.first_name || 'Tutor'} {feedback.users?.last_name || ''}
+                        </h4>
+                        <span className="text-sm text-blue-600">
+                          {feedback.created_at ? new Date(feedback.created_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : 'Recently'}
+                        </span>
+                      </div>
+                      {feedback.rating && (
+                        <div className="text-right">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-medium text-gray-700">Rating:</span>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map(star => (
+                                <Star
+                                  key={star}
+                                  size={16}
+                                  className={`${star <= feedback.rating ? 'text-yellow-500 fill-current' : 'text-gray-300'}`}
+                                />
+                              ))}
+                              <span className="text-sm font-bold text-gray-700 ml-1">
+                                ({feedback.rating}/5)
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mb-4">
+                      <h5 className="font-medium text-blue-800 mb-2">Feedback:</h5>
+                      <p className="text-blue-700 leading-relaxed">{feedback.feedback_text}</p>
+                    </div>
+
+                    {feedback.recommendations && (
+                      <div className="mt-4 p-4 bg-white rounded-lg border-l-4 border-green-500">
+                        <h5 className="font-medium text-green-800 mb-2 flex items-center gap-2">
+                          <TrendingUp size={16} />
+                          Recommendations:
+                        </h5>
+                        <p className="text-green-700 leading-relaxed">{feedback.recommendations}</p>
+                      </div>
+                    )}
+
+                    {/* Quiz info for context */}
+                    {feedback.quiz_attempts && (
+                      <div className="mt-4 pt-3 border-t border-blue-200">
+                        <div className="flex items-center gap-4 text-sm text-blue-600">
+                          <span className="flex items-center gap-1">
+                            <BookOpen size={14} />
+                            {feedback.quiz_attempts.categories?.name || 'Quiz'}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Award size={14} />
+                            Score: {feedback.quiz_attempts.score || 0}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Performance Tips - Show different tips based on user role */}
         <div className="card mt-8">

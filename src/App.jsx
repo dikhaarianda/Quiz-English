@@ -17,6 +17,7 @@ import QuestionManagement from './pages/QuestionManagement.jsx';
 import UserManagement from './pages/UserManagement.jsx';
 import FeedbackManagement from './pages/FeedbackManagement.jsx';
 import StudentProgress from './pages/StudentProgress.jsx';
+import StudentFeedback from './pages/StudentFeedback.jsx';
 import Loading from './components/Loading.jsx';
 
 // Protected Route Component
@@ -161,6 +162,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['student', 'tutor', 'super_tutor']}>
                   <QuizResults />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/student/:studentId/feedback/:attemptId"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentFeedback />
                 </ProtectedRoute>
               }
             />

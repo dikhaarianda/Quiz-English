@@ -92,8 +92,21 @@ export const categoriesService = {
   async getAvailableQuizzes() {
     try {
       const { data, error } = await supabase.rpc('get_available_quizzes');
-      return handleResponse(data, error);
+      
+      if (error) {
+        console.error('RPC get_available_quizzes error:', error);
+        return handleResponse(null, error);
+      }
+      
+      // The RPC function returns a JSON object with success and data properties
+      if (data && typeof data === 'object') {
+        console.log('RPC response data:', data);
+        return data; // Return the data directly as it already has success/data structure
+      }
+      
+      return handleResponse(data, null);
     } catch (error) {
+      console.error('getAvailableQuizzes catch error:', error);
       return handleResponse(null, error);
     }
   }
@@ -682,7 +695,8 @@ export const feedbackService = {
             categories(name),
             difficulty_levels(name)
           ),
-          users!feedback_tutor_id_fkey(first_name, last_name)
+          users!feedback_tutor_id_fkey(first_name, last_name),
+          student:users!feedback_student_id_fkey(first_name, last_name, username)
         `);
 
       // Filter based on user role
@@ -706,6 +720,119 @@ export const feedbackService = {
     }
   },
 
+  async getTutorFeedback(params = {}) {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      
+      let query = supabase
+        .from('feedback')
+        .select(`
+          *,
+          quiz_attempts(
+            id,
+            score,
+            categories(name),
+            difficulty_levels(name)
+          ),
+          users!feedback_tutor_id_fkey(first_name, last_name),
+          student:users!feedback_student_id_fkey(first_name, last_name, username)
+        `);
+
+      // Filter by tutor (only show feedback created by current tutor)
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.user?.id)
+        .single();
+
+      if (userProfile?.role === 'tutor') {
+        query = query.eq('tutor_id', user.user?.id);
+      }
+
+      // Apply filters
+      if (params.student_id) {
+        query = query.eq('student_id', params.student_id);
+      }
+
+      if (params.search) {
+        query = query.ilike('feedback_text', `%${params.search}%`);
+      }
+
+      // Apply pagination
+      const page = params.page || 1;
+      const limit = params.limit || 10;
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      query = query.range(from, to);
+
+      // Get total count for pagination
+      let countQuery = supabase
+        .from('feedback')
+        .select('*', { count: 'exact', head: true });
+
+      if (userProfile?.role === 'tutor') {
+        countQuery = countQuery.eq('tutor_id', user.user?.id);
+      }
+
+      if (params.student_id) {
+        countQuery = countQuery.eq('student_id', params.student_id);
+      }
+
+      const { count } = await countQuery;
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) {
+        return handleResponse(null, error);
+      }
+
+      // For each feedback item, get related student feedback if attempt_id exists
+      const feedbackWithStudentFeedback = await Promise.all(
+        (data || []).map(async (feedbackItem) => {
+          if (feedbackItem.attempt_id) {
+            // Get student feedback for the same quiz attempt
+            const { data: studentFeedbackData, error: studentFeedbackError } = await supabase
+              .from('student_feedback')
+              .select(`
+                id,
+                feedback_text,
+                rating,
+                created_at
+              `)
+              .eq('attempt_id', feedbackItem.attempt_id)
+              .eq('student_id', feedbackItem.student_id)
+              .single();
+
+            if (!studentFeedbackError && studentFeedbackData) {
+              return {
+                ...feedbackItem,
+                student_feedback: studentFeedbackData
+              };
+            }
+          }
+          return feedbackItem;
+        })
+      );
+
+      const totalPages = Math.ceil(count / limit);
+      const result = {
+        feedback: feedbackWithStudentFeedback || [],
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalCount: count,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      };
+
+      return handleResponse(result, null);
+    } catch (error) {
+      return handleResponse(null, error);
+    }
+  },
+
   async createFeedback(feedbackData) {
     try {
       const { data: user } = await supabase.auth.getUser();
@@ -713,7 +840,11 @@ export const feedbackService = {
       const { data, error } = await supabase
         .from('feedback')
         .insert([{
-          ...feedbackData,
+          student_id: feedbackData.student_id,
+          attempt_id: feedbackData.attempt_id || null,
+          feedback_text: feedbackData.feedback_text,
+          recommendations: feedbackData.recommendations || null,
+          rating: feedbackData.rating || null,
           tutor_id: user.user?.id
         }])
         .select(`
@@ -724,7 +855,8 @@ export const feedbackService = {
             categories(name),
             difficulty_levels(name)
           ),
-          users!feedback_tutor_id_fkey(first_name, last_name)
+          users!feedback_tutor_id_fkey(first_name, last_name),
+          student:users!feedback_student_id_fkey(first_name, last_name, username)
         `)
         .single();
 
@@ -738,7 +870,11 @@ export const feedbackService = {
     try {
       const { data, error } = await supabase
         .from('feedback')
-        .update(feedbackData)
+        .update({
+          feedback_text: feedbackData.feedback_text,
+          recommendations: feedbackData.recommendations || null,
+          rating: feedbackData.rating || null
+        })
         .eq('id', id)
         .select(`
           *,
@@ -748,7 +884,8 @@ export const feedbackService = {
             categories(name),
             difficulty_levels(name)
           ),
-          users!feedback_tutor_id_fkey(first_name, last_name)
+          users!feedback_tutor_id_fkey(first_name, last_name),
+          student:users!feedback_student_id_fkey(first_name, last_name, username)
         `)
         .single();
 
@@ -778,13 +915,229 @@ export const feedbackService = {
       const { data, error } = await supabase
         .from('student_feedback')
         .insert([{
-          ...feedbackData,
+          attempt_id: feedbackData.attempt_id,
+          tutor_id: feedbackData.tutor_id || null,
+          feedback_text: feedbackData.feedback_text,
+          rating: feedbackData.rating || null,
           student_id: user.user?.id
         }])
         .select()
         .single();
 
       return handleResponse(data, error, 'Feedback submitted successfully');
+    } catch (error) {
+      return handleResponse(null, error);
+    }
+  },
+
+  async getStudentFeedback(studentId = null) {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      
+      let query = supabase
+        .from('student_feedback')
+        .select(`
+          *,
+          quiz_attempts(
+            id,
+            score,
+            categories(name),
+            difficulty_levels(name)
+          ),
+          tutor:users!tutor_id(first_name, last_name)
+        `);
+
+      // Use provided studentId or current user's ID
+      const targetStudentId = studentId || user.user?.id;
+      query = query.eq('student_id', targetStudentId);
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      return handleResponse(data, error);
+    } catch (error) {
+      return handleResponse(null, error);
+    }
+  },
+
+  async updateStudentFeedback(id, feedbackData) {
+    try {
+      const { data, error } = await supabase
+        .from('student_feedback')
+        .update({
+          feedback_text: feedbackData.feedback_text,
+          rating: feedbackData.rating || null
+        })
+        .eq('id', id)
+        .select(`
+          *,
+          quiz_attempts(
+            id,
+            score,
+            categories(name),
+            difficulty_levels(name)
+          ),
+          tutor:users!tutor_id(first_name, last_name)
+        `)
+        .single();
+
+      return handleResponse(data, error, 'Feedback updated successfully');
+    } catch (error) {
+      return handleResponse(null, error);
+    }
+  },
+
+  async getStudentFeedbackByAttempt(attemptId) {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from('student_feedback')
+        .select(`
+          *,
+          quiz_attempts(
+            id,
+            score,
+            categories(name),
+            difficulty_levels(name)
+          ),
+          tutor:users!tutor_id(first_name, last_name)
+        `)
+        .eq('attempt_id', attemptId)
+        .eq('student_id', user.user?.id)
+        .single();
+
+      return handleResponse(data, error);
+    } catch (error) {
+      return handleResponse(null, error);
+    }
+  },
+
+  async getFeedbackByAttempt(attemptId) {
+    try {
+      const { data, error } = await supabase
+        .from('feedback')
+        .select(`
+          *,
+          quiz_attempts(
+            id,
+            score,
+            categories(name),
+            difficulty_levels(name)
+          ),
+          users!feedback_tutor_id_fkey(first_name, last_name),
+          student:users!feedback_student_id_fkey(first_name, last_name, username)
+        `)
+        .eq('attempt_id', attemptId)
+        .order('created_at', { ascending: false });
+
+      return handleResponse(data, error);
+    } catch (error) {
+      return handleResponse(null, error);
+    }
+  },
+
+  async getQuizAttempts(studentId = null) {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      
+      let query = supabase
+        .from('quiz_attempts')
+        .select(`
+          id,
+          score,
+          completed_at,
+          categories(name),
+          difficulty_levels(name),
+          users(first_name, last_name, username)
+        `)
+        .eq('is_completed', true);
+
+      // Filter based on user role
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.user?.id)
+        .single();
+
+      if (userProfile?.role === 'student') {
+        query = query.eq('student_id', user.user?.id);
+      } else if (studentId) {
+        query = query.eq('student_id', studentId);
+      }
+
+      const { data, error } = await query
+        .order('completed_at', { ascending: false })
+        .limit(20);
+
+      return handleResponse(data, error);
+    } catch (error) {
+      return handleResponse(null, error);
+    }
+  },
+
+  async getAllStudentFeedback(params = {}) {
+    try {
+      let query = supabase
+        .from('student_feedback')
+        .select(`
+          *,
+          quiz_attempts(
+            id,
+            score,
+            categories(name),
+            difficulty_levels(name)
+          ),
+          student:users!student_id(first_name, last_name, username),
+          tutor:users!tutor_id(first_name, last_name)
+        `);
+
+      // Apply filters
+      if (params.student_id) {
+        query = query.eq('student_id', params.student_id);
+      }
+
+      if (params.search) {
+        query = query.ilike('feedback_text', `%${params.search}%`);
+      }
+
+      // Apply pagination
+      const page = params.page || 1;
+      const limit = params.limit || 10;
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      query = query.range(from, to);
+
+      // Get total count for pagination
+      let countQuery = supabase
+        .from('student_feedback')
+        .select('*', { count: 'exact', head: true });
+
+      if (params.student_id) {
+        countQuery = countQuery.eq('student_id', params.student_id);
+      }
+
+      const { count } = await countQuery;
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) {
+        return handleResponse(null, error);
+      }
+
+      const totalPages = Math.ceil(count / limit);
+      const result = {
+        feedback: data || [],
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalCount: count,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      };
+
+      return handleResponse(result, null);
     } catch (error) {
       return handleResponse(null, error);
     }
@@ -899,6 +1252,25 @@ export const usersService = {
         .from('users')
         .select('*')
         .eq('role', 'student')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        return handleResponse(null, error);
+      }
+
+      return handleResponse({ users: data }, null);
+    } catch (error) {
+      return handleResponse(null, error);
+    }
+  },
+
+  async getTutors() {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .in('role', ['tutor', 'super_tutor'])
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 

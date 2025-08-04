@@ -29,44 +29,125 @@ const StudentDashboard = () => {
       
       const [quizzesRes, resultsRes, feedbackRes, progressRes] = await Promise.allSettled([
         categoriesService.getAvailableQuizzes(),
-        quizService.getQuizResults({ student_id: currentStudentId, limit: 5 }),
-        feedbackService.getFeedback(currentStudentId),
+        quizService.getQuizResults({ student_id: currentStudentId }),
+        feedbackService.getStudentFeedback(currentStudentId),
         analyticsService.getStudentProgress(currentStudentId)
       ]);
 
       // Handle available quizzes
       let quizzes = [];
-      if (quizzesRes.status === 'fulfilled' && quizzesRes.value.success) {
-        const data = quizzesRes.value.data;
-        if (Array.isArray(data)) {
-          // Transform categories with difficulties into flat quiz list
+      console.log('Quizzes response:', quizzesRes);
+      
+      if (quizzesRes.status === 'fulfilled') {
+        // Check if it's the new RPC function format
+        if (quizzesRes.value && quizzesRes.value.success && quizzesRes.value.data) {
+          const data = quizzesRes.value.data;
+          console.log('Quiz data from RPC:', data);
+          
+          if (Array.isArray(data)) {
+            // Transform categories with difficulties into flat quiz list
+            data.forEach(category => {
+              if (category.difficulties && Array.isArray(category.difficulties)) {
+                category.difficulties.forEach(difficulty => {
+                  if (difficulty.question_count > 0) { // Only show if there are questions
+                    quizzes.push({
+                      category_id: category.id,
+                      category_name: category.name,
+                      description: category.description,
+                      difficulty_id: difficulty.id,
+                      difficulty_name: difficulty.name,
+                      question_count: difficulty.question_count
+                    });
+                  }
+                });
+              }
+            });
+          }
+        }
+        // Check if it's direct RPC response format
+        else if (quizzesRes.value && quizzesRes.value.data && Array.isArray(quizzesRes.value.data)) {
+          const data = quizzesRes.value.data;
+          console.log('Direct RPC data:', data);
+          
           data.forEach(category => {
             if (category.difficulties && Array.isArray(category.difficulties)) {
               category.difficulties.forEach(difficulty => {
-                quizzes.push({
-                  category_id: category.id,
-                  category_name: category.name,
-                  description: category.description,
-                  difficulty_id: difficulty.id,
-                  difficulty_name: difficulty.name,
-                  question_count: difficulty.question_count || 10
-                });
+                if (difficulty.question_count > 0) {
+                  quizzes.push({
+                    category_id: category.id,
+                    category_name: category.name,
+                    description: category.description,
+                    difficulty_id: difficulty.id,
+                    difficulty_name: difficulty.name,
+                    question_count: difficulty.question_count
+                  });
+                }
               });
             }
           });
         }
+        // Fallback: try to get categories and difficulties separately
+        else {
+          console.log('Fallback: getting categories and difficulties separately');
+          try {
+            const [categoriesRes, difficultiesRes] = await Promise.allSettled([
+              categoriesService.getCategories(),
+              categoriesService.getDifficultyLevels()
+            ]);
+            
+            if (categoriesRes.status === 'fulfilled' && categoriesRes.value.success &&
+                difficultiesRes.status === 'fulfilled' && difficultiesRes.value.success) {
+              
+              const categories = categoriesRes.value.data || [];
+              const difficulties = difficultiesRes.value.data || [];
+              
+              // Create combinations of categories and difficulties
+              categories.forEach(category => {
+                difficulties.forEach(difficulty => {
+                  quizzes.push({
+                    category_id: category.id,
+                    category_name: category.name,
+                    description: category.description,
+                    difficulty_id: difficulty.id,
+                    difficulty_name: difficulty.name,
+                    question_count: 10 // Default count
+                  });
+                });
+              });
+            }
+          } catch (fallbackError) {
+            console.error('Fallback error:', fallbackError);
+          }
+        }
       } else {
         console.log('Available quizzes error:', quizzesRes.reason);
       }
-      setAvailableQuizzes(quizzes);
-
-      // Handle quiz results
+      
+      // Handle quiz results first to filter completed quizzes
       let results = [];
       if (resultsRes.status === 'fulfilled' && resultsRes.value.success) {
         results = resultsRes.value.data || [];
       } else {
         console.log('Quiz results error:', resultsRes.reason);
       }
+      
+      // Create a set of completed quiz combinations for this student
+      const completedQuizzes = new Set();
+      results.forEach(result => {
+        if (result.is_completed) {
+          completedQuizzes.add(`${result.category_id}-${result.difficulty_id}`);
+        }
+      });
+      
+      // Filter out completed quizzes from available quizzes
+      const availableQuizzes = quizzes.filter(quiz => {
+        const quizKey = `${quiz.category_id}-${quiz.difficulty_id}`;
+        return !completedQuizzes.has(quizKey);
+      });
+      
+      console.log('Completed quizzes:', Array.from(completedQuizzes));
+      console.log('Filtered available quizzes:', availableQuizzes);
+      setAvailableQuizzes(availableQuizzes);
       setRecentResults(Array.isArray(results) ? results.slice(0, 5) : []);
 
       // Handle feedback
@@ -358,12 +439,20 @@ const StudentDashboard = () => {
                         }`}>
                           {result.score || 0}%
                         </div>
-                        <Link
-                          to={`/student/${currentStudentId}/quiz-results/${result.id}`}
-                          className="text-sm text-blue-600 hover:underline"
-                        >
-                          View Details
-                        </Link>
+                        <div className="flex flex-col gap-1">
+                          <Link
+                            to={`/student/${currentStudentId}/quiz-results/${result.id}`}
+                            className="text-sm text-blue-600 hover:underline"
+                          >
+                            View Details
+                          </Link>
+                          <Link
+                            to={`/student/${currentStudentId}/feedback/${result.id}`}
+                            className="text-sm text-green-600 hover:underline"
+                          >
+                            Give Feedback
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -377,49 +466,69 @@ const StudentDashboard = () => {
             <div className="card-header">
               <h2 className="card-title flex items-center gap-2">
                 <MessageSquare size={20} />
-                Recent Feedback
+                My Recent Feedback
               </h2>
             </div>
             <div className="card-body">
               {!feedback || feedback.length === 0 ? (
                 <div className="text-center py-8">
                   <MessageSquare size={48} className="text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No feedback yet</p>
+                  <p className="text-gray-500">No feedback given yet</p>
+                  <p className="text-sm text-gray-400 mt-2">Complete quizzes and give feedback to see them here</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {feedback.map(item => (
-                    <div key={item.id} className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded-r-lg">
+                    <div key={item.id} className="border-l-4 border-green-500 pl-4 py-2 bg-green-50 rounded-r-lg">
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-semibold text-blue-800">
-                          From: {item.tutor_first_name || item.users?.first_name || 'Tutor'} {item.tutor_last_name || item.users?.last_name || ''}
+                        <h4 className="font-semibold text-green-800">
+                          Your Feedback
                         </h4>
-                        <span className="text-sm text-gray-500">
-                          {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recently'}
-                        </span>
+                        <div className="text-right">
+                          <span className="text-sm text-gray-500">
+                            {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recently'}
+                          </span>
+                          {item.rating && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className="text-xs text-gray-500">Rating:</span>
+                              <div className="flex">
+                                {[1, 2, 3, 4, 5].map(star => (
+                                  <span
+                                    key={star}
+                                    className={`text-xs ${star <= item.rating ? 'text-yellow-500' : 'text-gray-300'}`}
+                                  >
+                                    ★
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      {(item.category_name || item.quiz_attempts?.categories?.name) && (
+                      {item.quiz_attempts && (
                         <div className="flex items-center gap-2 mb-2">
                           <span className="badge badge-info text-xs">
-                            {item.category_name || item.quiz_attempts?.categories?.name}
+                            {item.quiz_attempts.categories?.name || 'Quiz'}
                           </span>
-                          {(item.score || item.quiz_attempts?.score) && (
+                          {item.quiz_attempts.score && (
                             <span className="badge badge-success text-xs">
-                              Score: {item.score || item.quiz_attempts?.score}%
+                              Score: {item.quiz_attempts.score}%
                             </span>
                           )}
                         </div>
                       )}
 
-                      <p className="text-blue-700 text-sm">{item.feedback_text}</p>
+                      <p className="text-green-700 text-sm">{item.feedback_text}</p>
 
-                      {item.recommendations && (
-                        <div className="mt-2 p-2 bg-white rounded border-l-4 border-green-500">
-                          <strong className="text-green-700 text-sm">Recommendations:</strong>
-                          <p className="text-green-700 text-sm">{item.recommendations}</p>
-                        </div>
-                      )}
+                      <div className="mt-2 flex justify-end">
+                        <Link
+                          to={`/student/${currentStudentId}/feedback/${item.attempt_id}`}
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          Edit Feedback
+                        </Link>
+                      </div>
                     </div>
                   ))}
                 </div>
