@@ -156,10 +156,10 @@ const StudentDashboard = () => {
   };
 
   const categoryData = dashboardData?.categoryProgress && dashboardData.categoryProgress.length > 0 ? {
-    labels: dashboardData.categoryProgress.map(cat => cat.category_name),
+    labels: dashboardData.categoryProgress.map(cat => cat.category_name || 'Unknown Category'),
     datasets: [
       {
-        data: dashboardData.categoryProgress.map(cat => cat.attempts),
+        data: dashboardData.categoryProgress.map(cat => cat.attempts || 0),
         backgroundColor: [
           'rgba(102, 126, 234, 0.8)',
           'rgba(16, 185, 129, 0.8)',

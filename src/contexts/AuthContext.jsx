@@ -15,112 +15,110 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const initializeAuth = async () => {
-      try {
-        // Get initial session with better error handling
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error getting session:', error);
-          if (mounted) {
-            setUser(null);
-            setLoading(false);
-            setInitialized(true);
-          }
-          return;
-        }
-
-        if (session?.user && mounted) {
-          await loadUserProfile(session.user);
-        } else if (mounted) {
-          setUser(null);
-        }
-
-        if (mounted) {
-          setLoading(false);
-          setInitialized(true);
-        }
-      } catch (error) {
-        console.error('Error in initializeAuth:', error);
-        if (mounted) {
-          setUser(null);
-          setLoading(false);
-          setInitialized(true);
-        }
-      }
-    };
-
-    // Initialize auth
-    initializeAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id);
-        
-        if (!mounted) return;
-
-        try {
-          if (session?.user) {
-            await loadUserProfile(session.user);
-          } else {
-            setUser(null);
-          }
-        } catch (error) {
-          console.error('Error handling auth state change:', error);
-          setUser(null);
-        }
-
-        if (initialized) {
-          setLoading(false);
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [initialized]);
-
+  // Load user profile helper function
   const loadUserProfile = async (authUser) => {
     try {
+      console.log('Loading profile for user:', authUser.id);
+      
       const { data: profile, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', authUser.id)
         .single();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
         console.error('Error loading user profile:', error);
-        // If profile doesn't exist, use auth user data
-        setUser({
-          id: authUser.id,
-          email: authUser.email,
-          ...authUser.user_metadata
-        });
-        return;
       }
 
-      setUser({
+      // Merge auth user with profile data (or use auth data if no profile)
+      const userData = {
         ...authUser,
-        ...profile
-      });
+        ...(profile || {}),
+        // Ensure we always have basic auth data
+        id: authUser.id,
+        email: authUser.email,
+      };
+      
+      console.log('User profile loaded successfully');
+      return userData;
     } catch (error) {
       console.error('Error in loadUserProfile:', error);
       // Fallback to auth user data
-      setUser({
+      return {
         id: authUser.id,
         email: authUser.email,
         ...authUser.user_metadata
-      });
+      };
     }
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    // Get initial session and set up listener
+    const initAuth = async () => {
+      try {
+        // Get current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session error:', error);
+        }
+
+        // Set initial user state
+        if (session?.user && mounted) {
+          const userData = await loadUserProfile(session.user);
+          setUser(userData);
+        } else {
+          setUser(null);
+        }
+
+        // Set up auth state listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            console.log('Auth state changed:', event);
+            
+            if (!mounted) return;
+
+            if (event === 'SIGNED_OUT' || !session?.user) {
+              setUser(null);
+            } else if (session?.user) {
+              const userData = await loadUserProfile(session.user);
+              setUser(userData);
+            }
+          }
+        );
+
+        // Set loading to false after everything is set up
+        if (mounted) {
+          setLoading(false);
+        }
+
+        // Return cleanup function
+        return () => {
+          subscription.unsubscribe();
+        };
+
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setUser(null);
+          setLoading(false);
+        }
+      }
+    };
+
+    let cleanup;
+    initAuth().then((cleanupFn) => {
+      cleanup = cleanupFn;
+    });
+
+    return () => {
+      mounted = false;
+      if (cleanup) cleanup();
+    };
+  }, []); // Empty dependency array - only run once
 
   const register = async (userData) => {
     try {
@@ -191,7 +189,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       
-      // First, get the email associated with the username using our database function
+      // First, get the email associated with the username
       const { data, error } = await supabase.rpc('get_email_from_username', {
         p_username: username
       });
@@ -231,7 +229,6 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: error.message };
       }
 
-      setUser(null);
       toast.success('Logged out successfully');
       return { success: true };
     } catch (error) {
@@ -321,7 +318,6 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
-    initialized,
     register,
     login,
     loginWithUsername,

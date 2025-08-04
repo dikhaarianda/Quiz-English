@@ -29,25 +29,30 @@ const TutorDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       // Use Promise.allSettled to handle partial failures gracefully
-      const [statsRes, studentsRes, questionsRes] = await Promise.allSettled([
-        analyticsService.getSystemAnalytics().catch(() => ({ success: false, data: {} })),
-        usersService.getUsers({ role: 'student', limit: 5 }).catch(() => ({ success: false, data: { users: [] } })),
-        questionsService.getQuestions({ limit: 5 }).catch(() => ({ success: false, data: [] }))
+      const [tutorAnalyticsRes, studentsRes, questionsRes] = await Promise.allSettled([
+        analyticsService.getTutorAnalytics(),
+        usersService.getUsers({ role: 'student', limit: 5 }),
+        questionsService.getQuestions({ limit: 5 })
       ]);
 
-      // Handle stats response
-      if (statsRes.status === 'fulfilled' && statsRes.value.success) {
-        const statsData = statsRes.value.data || {};
+      // Handle tutor analytics response
+      if (tutorAnalyticsRes.status === 'fulfilled' && tutorAnalyticsRes.value.success) {
+        const analyticsData = tutorAnalyticsRes.value.data || {};
+        
+        // Get system stats for total students count
+        const systemStatsRes = await analyticsService.getSystemAnalytics();
+        const systemStats = systemStatsRes.success ? systemStatsRes.data : {};
+        
         setDashboardData({
-          totalStudents: statsData.userStats?.student || 0,
-          totalQuestions: statsData.totalQuestions || 0,
-          totalAttempts: statsData.totalQuizzes || 0,
-          averageScore: statsData.averageScore || 0,
-          categoryStats: [], // Will need to implement category stats in analytics service
-          studentPerformance: [] // Will need to implement student performance in analytics service
+          totalStudents: systemStats.userStats?.student || 0,
+          totalQuestions: systemStats.totalQuestions || 0,
+          totalAttempts: analyticsData.totalAttempts || 0,
+          averageScore: analyticsData.averageScore || 0,
+          categoryStats: analyticsData.categoryStats || [],
+          studentPerformance: analyticsData.studentPerformance || []
         });
       } else {
-        // Set default values if stats request failed
+        console.log('Tutor analytics error:', tutorAnalyticsRes.reason);
         setDashboardData({
           totalStudents: 0,
           totalQuestions: 0,
@@ -63,14 +68,17 @@ const TutorDashboard = () => {
         const studentsData = studentsRes.value.data || {};
         setStudents(Array.isArray(studentsData.users) ? studentsData.users.slice(0, 5) : []);
       } else {
+        console.log('Students error:', studentsRes.reason);
         setStudents([]);
       }
 
       // Handle questions response
       if (questionsRes.status === 'fulfilled' && questionsRes.value.success) {
-        const questionsData = questionsRes.value.data || [];
-        setRecentQuestions(Array.isArray(questionsData) ? questionsData.slice(0, 5) : []);
+        const questionsData = questionsRes.value.data || {};
+        const questions = questionsData.questions || questionsData;
+        setRecentQuestions(Array.isArray(questions) ? questions.slice(0, 5) : []);
       } else {
+        console.log('Questions error:', questionsRes.reason);
         setRecentQuestions([]);
       }
 
@@ -78,7 +86,7 @@ const TutorDashboard = () => {
       console.error('Error fetching dashboard data:', error);
       toast.error('Some dashboard data could not be loaded');
       
-      // Set default values on error
+      // Set empty values on error
       setDashboardData({
         totalStudents: 0,
         totalQuestions: 0,

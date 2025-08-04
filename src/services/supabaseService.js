@@ -424,66 +424,23 @@ export const analyticsService = {
     }
   },
 
-  async getTutorAnalytics() {
-    try {
-      const { data, error } = await supabase
-        .from('quiz_attempts')
-        .select(`
-          *,
-          categories(name),
-          difficulty_levels(name),
-          users(first_name, last_name)
-        `)
-        .eq('is_completed', true)
-        .order('completed_at', { ascending: false });
 
-      if (error) {
-        return handleResponse(null, error);
-      }
-
-      // Process data for analytics
-      const analytics = {
-        totalAttempts: data.length,
-        averageScore: data.reduce((sum, attempt) => sum + attempt.score, 0) / data.length || 0,
-        categoryStats: {},
-        recentAttempts: data.slice(0, 10)
-      };
-
-      // Group by category
-      data.forEach(attempt => {
-        const categoryName = attempt.categories?.name || 'Unknown';
-        if (!analytics.categoryStats[categoryName]) {
-          analytics.categoryStats[categoryName] = {
-            attempts: 0,
-            totalScore: 0,
-            averageScore: 0
-          };
-        }
-        analytics.categoryStats[categoryName].attempts++;
-        analytics.categoryStats[categoryName].totalScore += attempt.score;
-        analytics.categoryStats[categoryName].averageScore = 
-          analytics.categoryStats[categoryName].totalScore / analytics.categoryStats[categoryName].attempts;
-      });
-
-      return handleResponse(analytics, null);
-    } catch (error) {
-      return handleResponse(null, error);
-    }
-  },
-
-  // NEW: Add System Analytics function for Super Tutor Dashboard
+  // Enhanced System Analytics function for Super Tutor Dashboard
   async getSystemAnalytics() {
     try {
-      // Get user statistics
+      // Get user statistics with creation dates
       const { data: userStats } = await supabase
         .from('users')
-        .select('role')
+        .select('role, created_at')
         .eq('is_active', true);
 
-      // Get question count
-      const { count: questionCount } = await supabase
+      // Get question count with category breakdown
+      const { data: questionStats } = await supabase
         .from('questions')
-        .select('*', { count: 'exact', head: true })
+        .select(`
+          id,
+          categories(id, name)
+        `)
         .eq('is_active', true);
 
       // Get quiz attempts count
@@ -495,7 +452,29 @@ export const analyticsService = {
       // Get average score
       const { data: scoreData } = await supabase
         .from('quiz_attempts')
-        .select('score')
+        .select('score, created_at')
+        .eq('is_completed', true);
+
+      // Get weekly growth data
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      const { data: newUsersThisWeek } = await supabase
+        .from('users')
+        .select('id')
+        .gte('created_at', oneWeekAgo.toISOString())
+        .eq('is_active', true);
+
+      const { data: newQuestionsThisWeek } = await supabase
+        .from('questions')
+        .select('id')
+        .gte('created_at', oneWeekAgo.toISOString())
+        .eq('is_active', true);
+
+      const { data: newAttemptsThisWeek } = await supabase
+        .from('quiz_attempts')
+        .select('id')
+        .gte('created_at', oneWeekAgo.toISOString())
         .eq('is_completed', true);
 
       // Process user stats by role
@@ -506,22 +485,182 @@ export const analyticsService = {
         });
       }
 
+      // Process questions by category
+      const categoryStats = {};
+      if (questionStats) {
+        questionStats.forEach(question => {
+          const categoryName = question.categories?.name || 'Uncategorized';
+          categoryStats[categoryName] = (categoryStats[categoryName] || 0) + 1;
+        });
+      }
+
+      // Generate user growth data for last 30 days
+      const userGrowthData = [];
+      if (userStats && userStats.length > 0) {
+        const last30Days = Array.from({ length: 30 }, (_, i) => {
+          const date = new Date();
+          date.setDate(date.getDate() - (29 - i));
+          return date.toISOString().split('T')[0];
+        });
+
+        last30Days.forEach(date => {
+          const usersOnDate = userStats.filter(user => 
+            user.created_at && user.created_at.split('T')[0] === date
+          ).length;
+          
+          if (usersOnDate > 0) {
+            userGrowthData.push({
+              date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              count: usersOnDate
+            });
+          }
+        });
+      }
+
       // Calculate average score
       const averageScore = scoreData && scoreData.length > 0 
         ? Math.round(scoreData.reduce((sum, item) => sum + item.score, 0) / scoreData.length)
         : 0;
 
+      // Calculate score change (compare last week vs previous week)
+      const twoWeeksAgo = new Date();
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+      const lastWeekScores = scoreData ? scoreData.filter(item => 
+        new Date(item.created_at) >= oneWeekAgo
+      ) : [];
+
+      const previousWeekScores = scoreData ? scoreData.filter(item => {
+        const date = new Date(item.created_at);
+        return date >= twoWeeksAgo && date < oneWeekAgo;
+      }) : [];
+
+      const lastWeekAvg = lastWeekScores.length > 0 
+        ? lastWeekScores.reduce((sum, item) => sum + item.score, 0) / lastWeekScores.length
+        : 0;
+
+      const previousWeekAvg = previousWeekScores.length > 0 
+        ? previousWeekScores.reduce((sum, item) => sum + item.score, 0) / previousWeekScores.length
+        : 0;
+
+      const scoreChange = previousWeekAvg > 0 
+        ? Math.round(((lastWeekAvg - previousWeekAvg) / previousWeekAvg) * 100)
+        : 0;
+
       const analytics = {
         totalUsers: userStats ? userStats.length : 0,
-        totalQuestions: questionCount || 0,
+        totalQuestions: questionStats ? questionStats.length : 0,
         totalQuizzes: quizCount || 0,
         averageScore: averageScore,
-        userStats: roleStats
+        newUsersThisWeek: newUsersThisWeek ? newUsersThisWeek.length : 0,
+        newQuestionsThisWeek: newQuestionsThisWeek ? newQuestionsThisWeek.length : 0,
+        newAttemptsThisWeek: newAttemptsThisWeek ? newAttemptsThisWeek.length : 0,
+        scoreChange: scoreChange,
+        userStats: roleStats,
+        userGrowth: userGrowthData,
+        questionsByCategory: Object.entries(categoryStats).map(([name, count]) => ({
+          category_name: name,
+          count: count
+        }))
       };
 
       return handleResponse(analytics, null);
     } catch (error) {
       console.error('System analytics error:', error);
+      return handleResponse(null, error);
+    }
+  },
+
+  // Enhanced Tutor Analytics function
+  async getTutorAnalytics() {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      
+      // Get all quiz attempts with related data
+      const { data: attempts } = await supabase
+        .from('quiz_attempts')
+        .select(`
+          *,
+          categories(name),
+          difficulty_levels(name),
+          users(first_name, last_name)
+        `)
+        .eq('is_completed', true)
+        .order('completed_at', { ascending: false });
+
+      if (!attempts || attempts.length === 0) {
+        return handleResponse({
+          totalAttempts: 0,
+          averageScore: 0,
+          categoryStats: [],
+          studentPerformance: [],
+          recentAttempts: []
+        }, null);
+      }
+
+      // Get questions created by current tutor
+      const { data: tutorQuestions } = await supabase
+        .from('questions')
+        .select(`
+          id,
+          categories(name)
+        `)
+        .eq('created_by', user.user?.id)
+        .eq('is_active', true);
+
+      // Process category stats based on tutor's questions
+      const categoryStats = {};
+      if (tutorQuestions) {
+        tutorQuestions.forEach(question => {
+          const categoryName = question.categories?.name || 'Uncategorized';
+          categoryStats[categoryName] = (categoryStats[categoryName] || 0) + 1;
+        });
+      }
+
+      // Process student performance (top 10 students by average score)
+      const studentStats = {};
+      attempts.forEach(attempt => {
+        const studentName = `${attempt.users?.first_name || ''} ${attempt.users?.last_name || ''}`.trim() || 'Unknown Student';
+        const studentId = attempt.student_id;
+        
+        if (!studentStats[studentId]) {
+          studentStats[studentId] = {
+            name: studentName,
+            scores: [],
+            totalAttempts: 0
+          };
+        }
+        
+        studentStats[studentId].scores.push(attempt.score);
+        studentStats[studentId].totalAttempts++;
+      });
+
+      // Calculate average scores and sort
+      const studentPerformance = Object.entries(studentStats)
+        .map(([studentId, stats]) => ({
+          student_id: studentId,
+          first_name: stats.name.split(' ')[0] || 'Unknown',
+          last_name: stats.name.split(' ').slice(1).join(' ') || '',
+          average_score: Math.round(stats.scores.reduce((sum, score) => sum + score, 0) / stats.scores.length),
+          total_attempts: stats.totalAttempts
+        }))
+        .sort((a, b) => b.average_score - a.average_score)
+        .slice(0, 10);
+
+      const analytics = {
+        totalAttempts: attempts.length,
+        averageScore: Math.round(attempts.reduce((sum, attempt) => sum + attempt.score, 0) / attempts.length),
+        categoryStats: Object.entries(categoryStats).map(([name, count]) => ({
+          category_name: name,
+          question_count: count
+        })),
+        studentPerformance: studentPerformance,
+        recentAttempts: attempts.slice(0, 10)
+      };
+
+      return handleResponse(analytics, null);
+    } catch (error) {
+      console.error('Tutor analytics error:', error);
       return handleResponse(null, error);
     }
   }

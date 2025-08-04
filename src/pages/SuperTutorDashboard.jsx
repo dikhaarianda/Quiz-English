@@ -66,18 +66,28 @@ const SuperTutorDashboard = () => {
           totalQuestions: data.totalQuestions || 0,
           totalAttempts: data.totalQuizzes || 0,
           averageScore: data.averageScore || 0,
+          newUsersThisWeek: data.newUsersThisWeek || 0,
+          newQuestionsThisWeek: data.newQuestionsThisWeek || 0,
+          newAttemptsThisWeek: data.newAttemptsThisWeek || 0,
+          scoreChange: data.scoreChange || 0,
+          userGrowth: data.userGrowth || [],
+          questionsByCategory: data.questionsByCategory || [],
           // Convert userStats object to array for chart
           usersByRole: data.userStats ? Object.entries(data.userStats).map(([role, count]) => ({
             role,
             count
           })) : []
         };
+      } else {
+        console.log('Analytics error:', analyticsRes.reason);
       }
 
       // Handle recent users response
       if (recentUsersRes.status === 'fulfilled' && recentUsersRes.value.success) {
         const usersData = recentUsersRes.value.data || {};
         dashboardStats.recentUsers = Array.isArray(usersData.users) ? usersData.users.slice(0, 10) : [];
+      } else {
+        console.log('Recent users error:', recentUsersRes.reason);
       }
 
       setDashboardData(dashboardStats);

@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Loading = ({ message = 'Loading...' }) => {
+const Loading = ({ message = 'Please Wait...' }) => {
   return (
     <div className="loading-container">
       <div className="loading-spinner">
