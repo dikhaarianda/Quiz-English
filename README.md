@@ -1,375 +1,404 @@
-# English Quiz Platform
+# 📚 Quiz English Platform - Complete Documentation
 
-A comprehensive web-based English learning platform with role-based access, featuring interactive quizzes, progress tracking, and feedback management.
+## 🎯 Overview
 
-## 🌟 Features
+Quiz English adalah platform pembelajaran bahasa Inggris berbasis web yang memungkinkan siswa mengerjakan quiz interaktif, tutor membuat soal dan memberikan feedback, serta admin mengelola seluruh sistem. Platform ini dibangun dengan teknologi modern dan dirancang untuk kemudahan penggunaan bagi pengguna non-teknis.
 
-### For Students
+## 🏗️ System Architecture
 
-- **Interactive Quizzes**: Take quizzes across different categories and difficulty levels
-- **Progress Tracking**: Monitor your learning progress with detailed analytics
-- **Instant Results**: Get immediate feedback on quiz performance
-- **Tutor Feedback**: Receive personalized feedback from tutors
-- **One-Time Attempts**: Each quiz can only be taken once to ensure fair assessment
-
-### For Tutors
-
-- **Question Management**: Create, edit, and manage quiz questions
-- **Student Monitoring**: Track student progress and performance
-- **Feedback System**: Provide detailed feedback and recommendations
-- **Analytics Dashboard**: View comprehensive statistics and insights
-- **Media Support**: Add images and audio to questions
-
-### For Super Tutors (Admins)
-
-- **User Management**: Manage all users and their roles
-- **Complete Access**: Full access to all platform features
-- **System Analytics**: View platform-wide statistics
-- **Content Moderation**: Oversee all content and feedback
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Backend       │    │   Database      │
+│   (React +      │◄──►│   (Supabase)    │◄──►│   (PostgreSQL)  │
+│   Vite)         │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Vercel        │    │   Supabase      │    │   File Storage  │
+│   (Hosting)     │    │   (Auth + API)  │    │   (Supabase)    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: React 18, React Router, Vite
-- **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions)
-- **UI Components**: Custom CSS with Lucide React icons
-- **Charts**: Chart.js with React Chart.js 2
-- **Notifications**: React Toastify
-- **Authentication**: Supabase Auth with Row Level Security
+### Frontend
+
+- **React 18** - UI Library
+- **Vite** - Build tool dan dev server
+- **React Router** - Client-side routing
+- **Chart.js** - Data visualization
+- **Tailwind CSS** - Styling framework
+
+### Backend
+
+- **Supabase** - Backend-as-a-Service
+- **PostgreSQL** - Database
+- **Row Level Security** - Data security
+- **Supabase Auth** - Authentication
+- **Supabase Storage** - File storage
+
+### Deployment
+
+- **Vercel** - Frontend hosting
+- **Supabase Cloud** - Backend hosting
+
+## 👥 User Roles
+
+### 👨‍🎓 Student
+
+- Mengerjakan quiz interaktif
+- Melihat hasil dan progress belajar
+- Menerima feedback dari tutor
+- Tracking pencapaian dan statistik
+
+### 👨‍🏫 Tutor
+
+- Membuat dan mengelola soal quiz
+- Memberikan feedback kepada siswa
+- Monitor progress siswa
+- Analisis performa pembelajaran
+
+### 👨‍💼 Super Tutor (Admin)
+
+- Mengelola semua pengguna sistem
+- Oversight semua soal dan konten
+- Analytics platform menyeluruh
+- Konfigurasi dan maintenance sistem
+
+## 📁 Project Structure
+
+```
+English-Quiz/
+├── public/                     # Static files
+│   ├── user-guide.html        # User documentation
+│   └── favicon.ico
+├── src/                       # Source code
+│   ├── components/            # Reusable components
+│   ├── contexts/             # React contexts
+│   ├── lib/                  # Utilities
+│   ├── pages/                # Page components
+│   └── services/             # API services
+├── supabase/                 # Database migrations
+│   ├── migrations/           # SQL migration files
+│   └── instruction/          # Setup guides
+├── DEVELOPMENT_GUIDE.md      # Development documentation
+├── API_REFERENCE.md          # API documentation
+├── DEPLOYMENT_GUIDE.md       # Deployment instructions
+├── MAINTENANCE_GUIDE.md      # Maintenance procedures
+└── README.md                 # This file
+```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 16+
-- npm or yarn
+- Node.js 18+
+- npm atau yarn
+- Git
 - Supabase account
 
-### Installation
+### Development Setup
 
-1. **Clone the repository**
+```bash
+# Clone repository
+git clone <repository-url>
+cd English-Quiz
 
-   ```bash
-   git clone <repository-url>
-   cd english-quiz-platform
-   ```
+# Install dependencies
+npm install
 
-2. **Install dependencies**
+# Setup environment variables
+cp .env.example .env.local
+# Edit .env.local dengan Supabase credentials
 
-   ```bash
-   npm install
-   ```
+# Start development server
+npm run dev
+```
 
-3. **Set up environment variables**
+### Demo Accounts
 
-   ```bash
-   cp .env.example .env
-   ```
+```
+Super Tutor (Admin):
+- Username: admin
+- Password: admin123
 
-   Edit `.env` with your Supabase credentials:
+Tutor:
+- Username: sarah_tutor
+- Password: password123
 
-   ```env
-   VITE_SUPABASE_URL=your_supabase_project_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
+Student:
+- Username: john_student
+- Password: password123
+```
 
-4. **Set up Supabase backend**
+## 📖 Documentation
 
-   Follow the detailed setup guide in [SUPABASE_SETUP.md](./SUPABASE_SETUP.md)
+### 🔧 For Developers
 
-5. **Start the development server**
+- **[DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)** - Panduan lengkap development
+  - System overview dan architecture
+  - Technology stack detail
+  - Database schema dan relationships
+  - Frontend components structure
+  - Authentication & authorization
+  - Development setup dan best practices
 
-   ```bash
-   npm run dev
-   ```
+### 🔌 API Documentation
 
-6. **Open your browser**
+- **[API_REFERENCE.md](./API_REFERENCE.md)** - Dokumentasi API lengkap
+  - Authentication endpoints
+  - User management APIs
+  - Quiz dan question management
+  - Analytics dan reporting
+  - File upload handling
+  - Error handling dan debugging
 
-   Navigate to `http://localhost:5173`
+### 🚀 Deployment
 
-## 📚 User Roles & Permissions
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Panduan deployment
+  - Environment setup
+  - Database configuration
+  - Frontend deployment (Vercel)
+  - Domain dan SSL setup
+  - CI/CD pipeline
+  - Monitoring dan logging
 
-### Student Role
+### 🔧 Maintenance
 
-- ✅ Register and login
-- ✅ Take quizzes (one attempt per quiz)
-- ✅ View quiz results and explanations
-- ✅ Track personal progress
-- ✅ Receive and view tutor feedback
-- ✅ Submit feedback after completing quizzes
+- **[MAINTENANCE_GUIDE.md](./MAINTENANCE_GUIDE.md)** - Panduan maintenance
+  - Daily, weekly, monthly tasks
+  - Database maintenance
+  - Performance monitoring
+  - Security procedures
+  - Backup dan recovery
+  - Emergency procedures
 
-### Tutor Role
+### 👥 User Guide
 
-- ✅ All student permissions
-- ✅ Create and manage questions
-- ✅ View all student results
-- ✅ Provide feedback to students
-- ✅ Access tutor analytics dashboard
-- ✅ Manage quiz categories and difficulties
+- **[public/user-guide.html](./public/user-guide.html)** - Panduan pengguna
+  - Panduan untuk siswa
+  - Panduan untuk tutor
+  - Panduan untuk admin
+  - Troubleshooting umum
+  - FAQ dan support
 
-### Super Tutor Role (Admin)
+## 🎯 Key Features
 
-- ✅ All tutor permissions
-- ✅ Manage all users (create, edit, deactivate)
-- ✅ Access system-wide analytics
-- ✅ Moderate all content and feedback
-- ✅ Manage platform settings
+### ✅ Multi-Role System
 
-## 🎯 Demo Accounts
+- Role-based access control
+- Secure authentication
+- Permission management
 
-For testing purposes, you can use these demo accounts:
+### ✅ Interactive Quiz System
 
-| Role        | Username     | Password    | Email                   |
-| ----------- | ------------ | ----------- | ----------------------- |
-| Super Tutor | admin        | admin123    | admin@englishquiz.com   |
-| Tutor       | tutor1  | password123 | tutor1@englishquiz.com  |
-| Student     | student1 | password123 | student1@englishquiz.com|
+- Multiple choice questions
+- Timer functionality
+- Real-time scoring
+- Progress tracking
 
-_Note: Create these accounts through the registration process first._
+### ✅ Analytics & Reporting
+
+- Student progress tracking
+- Performance analytics
+- Category-wise statistics
+- Visual charts dan graphs
+
+### ✅ Feedback System
+
+- Tutor-to-student feedback
+- Rating system
+- Personalized recommendations
+
+### ✅ File Management
+
+- Image upload untuk questions
+- Audio support
+- Secure file storage
+
+### ✅ Responsive Design
+
+- Mobile-friendly interface
+- Cross-browser compatibility
+- Accessible design
+
+## 🔒 Security Features
+
+- **Row Level Security (RLS)** - Database-level security
+- **JWT Authentication** - Secure token-based auth
+- **Input Validation** - XSS dan injection protection
+- **Rate Limiting** - API abuse prevention
+- **HTTPS Encryption** - Secure data transmission
 
 ## 📊 Database Schema
 
 ### Core Tables
 
-- **users**: User profiles with role-based access
-- **categories**: Quiz categories (Grammar, Vocabulary, Reading, etc.)
-- **difficulty_levels**: Beginner, Intermediate, Advanced
-- **questions**: Quiz questions with explanations
-- **question_options**: Multiple choice answers
-- **quiz_attempts**: Student quiz sessions and scores
-- **quiz_answers**: Individual question responses
-- **feedback**: Tutor-to-student feedback
-- **student_feedback**: Student-to-tutor feedback
+- **users** - User profiles dan authentication
+- **categories** - Quiz categories (Grammar, Vocabulary, etc.)
+- **difficulty_levels** - Beginner, Intermediate, Advanced
+- **questions** - Quiz questions dengan options
+- **quiz_attempts** - Student quiz attempts
+- **quiz_answers** - Individual question answers
+- **feedback** - Tutor feedback to students
 
-### Key Features
+### Relationships
 
-- **Row Level Security (RLS)**: Secure data access based on user roles
-- **Auto-grading**: Automatic quiz scoring and analytics
-- **File Storage**: Support for question images and audio
-- **Real-time Updates**: Live progress tracking
+- Users create questions dan give feedback
+- Questions belong to categories dan difficulty levels
+- Quiz attempts track student progress
+- Feedback links tutors, students, dan quiz attempts
 
-## 🔧 Development
+## 🚀 Getting Started Guide
 
-### Project Structure
+### For Students
 
+1. Login dengan akun yang diberikan
+2. Pilih quiz dari dashboard
+3. Kerjakan soal dengan teliti
+4. Lihat hasil dan feedback
+5. Track progress melalui charts
+
+### For Tutors
+
+1. Login dengan akun tutor
+2. Buat soal melalui Question Management
+3. Monitor student progress
+4. Berikan feedback melalui Feedback Management
+5. Analisis performance data
+
+### For Admins
+
+1. Login dengan akun super tutor
+2. Kelola users melalui User Management
+3. Monitor platform analytics
+4. Review dan approve content
+5. Maintain system health
+
+## 🔧 Development Commands
+
+```bash
+# Development
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run lint         # Run ESLint
+
+# Database
+supabase start       # Start local Supabase
+supabase db reset    # Reset database
+supabase db push     # Push migrations
+
+# Deployment
+vercel --prod        # Deploy to production
+vercel env add       # Add environment variables
 ```
-src/
-├── components/          # Reusable UI components
-├── contexts/           # React contexts (Auth, etc.)
-├── lib/               # Utility libraries (Supabase config)
-├── pages/             # Page components
-├── services/          # API service layer
-└── styles/            # CSS styles
 
-supabase/
-├── migrations/        # Database migrations
-└── functions/         # Edge functions (if any)
-```
-
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-
-### Adding New Features
-
-1. **Database Changes**: Add migrations in `supabase/migrations/`
-2. **API Services**: Update `src/services/supabaseService.js`
-3. **UI Components**: Add to `src/components/` or `src/pages/`
-4. **Authentication**: Modify `src/contexts/AuthContext.jsx`
-
-## 🔒 Security Features
-
-- **Row Level Security**: Database-level access control
-- **Role-based Permissions**: Granular access control
-- **Secure Authentication**: Supabase Auth with JWT tokens
-- **Input Validation**: Client and server-side validation
-- **File Upload Security**: Restricted file types and sizes
-
-## 📱 Responsive Design
-
-The platform is fully responsive and works on:
-
-- 📱 Mobile devices (320px+)
-- 📱 Tablets (768px+)
-- 💻 Desktop computers (1024px+)
-- 🖥️ Large screens (1440px+)
-
-## 🌐 Browser Support
-
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
-
-## 📈 Performance
-
-- **Lazy Loading**: Components loaded on demand
-- **Optimized Images**: Automatic image optimization
-- **Caching**: Efficient data caching strategies
-- **Bundle Splitting**: Optimized JavaScript bundles
-
-## 🧪 Testing
-
-### Manual Testing Checklist
-
-#### Authentication
-
-- [ ] User registration with different roles
-- [ ] Login with email and username
-- [ ] Password reset functionality
-- [ ] Session persistence
-
-#### Quiz Functionality
-
-- [ ] Quiz creation and management
-- [ ] Question creation with multiple options
-- [ ] Quiz taking experience
-- [ ] Auto-grading accuracy
-- [ ] Results display
-
-#### Role-based Access
-
-- [ ] Student permissions
-- [ ] Tutor permissions
-- [ ] Super tutor permissions
-- [ ] Unauthorized access prevention
-
-#### Feedback System
-
-- [ ] Tutor feedback creation
-- [ ] Student feedback submission
-- [ ] Feedback display and management
-
-## 🚀 Deployment
-
-### Production Checklist
-
-1. **Environment Setup**
-
-   - [ ] Production Supabase project
-   - [ ] Environment variables configured
-   - [ ] Domain and SSL certificate
-
-2. **Database**
-
-   - [ ] All migrations applied
-   - [ ] Sample data removed (if needed)
-   - [ ] Backup strategy in place
-
-3. **Security**
-
-   - [ ] RLS policies reviewed
-   - [ ] CORS settings configured
-   - [ ] Rate limiting enabled
-
-4. **Performance**
-   - [ ] Build optimization
-   - [ ] CDN configuration
-   - [ ] Monitoring setup
-
-### Deployment Platforms
-
-The application can be deployed on:
-
-- **Vercel** (Recommended for React apps)
-- **Netlify**
-- **AWS Amplify**
-- **Traditional hosting** with static file serving
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Guidelines
-
-- Follow React best practices
-- Use TypeScript for new components (optional)
-- Write meaningful commit messages
-- Test your changes thoroughly
-- Update documentation as needed
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-### Getting Help
-
-1. **Documentation**: Check this README and SUPABASE_SETUP.md
-2. **Issues**: Create a GitHub issue for bugs
-3. **Discussions**: Use GitHub Discussions for questions
-4. **Community**: Join our Discord/Slack (if available)
+## 🐛 Troubleshooting
 
 ### Common Issues
 
-- **Build Errors**: Check Node.js version and dependencies
-- **Database Issues**: Verify Supabase configuration
-- **Authentication Problems**: Check environment variables
-- **Permission Errors**: Review RLS policies
+#### Authentication Problems
 
-## 🔮 Roadmap
+```javascript
+// Check if user is authenticated
+const {
+  data: { user },
+} = await supabase.auth.getUser();
+console.log("Current user:", user);
 
-### Upcoming Features
+// Refresh session if needed
+const { data, error } = await supabase.auth.refreshSession();
+```
 
-- [ ] **Mobile App**: React Native version
-- [ ] **Advanced Analytics**: More detailed reporting
-- [ ] **Gamification**: Points, badges, leaderboards
-- [ ] **Offline Mode**: PWA with offline capabilities
-- [ ] **Multi-language**: Platform localization
-- [ ] **AI Integration**: Smart question generation
-- [ ] **Video Support**: Video questions and explanations
-- [ ] **Collaborative Features**: Study groups and peer review
+#### Database Connection Issues
 
-### Performance Improvements
+```sql
+-- Check RLS policies
+SELECT * FROM pg_policies WHERE tablename = 'your_table';
 
-- [ ] **Caching Strategy**: Redis integration
-- [ ] **Database Optimization**: Query optimization
-- [ ] **CDN Integration**: Global content delivery
-- [ ] **Real-time Features**: WebSocket integration
+-- Test query permissions
+SELECT * FROM users LIMIT 1;
+```
 
-## 📊 Analytics & Monitoring
+#### Build Errors
 
-The platform includes built-in analytics for:
+```bash
+# Clear cache and reinstall
+rm -rf node_modules package-lock.json
+npm install
 
-- User engagement metrics
-- Quiz completion rates
-- Performance trends
-- Error tracking
-- Usage patterns
+# Check environment variables
+echo $VITE_SUPABASE_URL
+echo $VITE_SUPABASE_ANON_KEY
+```
 
-## 🎨 Customization
+## 📞 Support & Contact
 
-### Theming
+### For Technical Issues
 
-- CSS custom properties for easy theming
-- Dark mode support (planned)
-- Brand customization options
+- Check [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md) untuk development issues
+- Review [API_REFERENCE.md](./API_REFERENCE.md) untuk API problems
+- Follow [MAINTENANCE_GUIDE.md](./MAINTENANCE_GUIDE.md) untuk system issues
 
-### Configuration
+### For User Issues
 
-- Environment-based configuration
-- Feature flags for A/B testing
-- Customizable quiz settings
+- Refer to [user-guide.html](./public/user-guide.html)
+- Check FAQ section
+- Contact system administrator
+
+### Emergency Procedures
+
+- Follow emergency procedures di [MAINTENANCE_GUIDE.md](./MAINTENANCE_GUIDE.md)
+- Check system status pages
+- Contact technical team immediately
+
+## 🔄 Contributing
+
+### Development Workflow
+
+1. Fork repository
+2. Create feature branch
+3. Make changes dengan proper testing
+4. Submit pull request
+5. Code review dan approval
+
+### Code Standards
+
+- Follow ESLint configuration
+- Use consistent naming conventions
+- Write clear comments
+- Include proper error handling
+- Test all changes thoroughly
+
+## 📝 License
+
+This project is proprietary software. All rights reserved.
+
+## 🎉 Acknowledgments
+
+- **React Team** - For the amazing UI library
+- **Supabase Team** - For the excellent backend platform
+- **Vercel Team** - For seamless deployment experience
+- **Chart.js Team** - For beautiful data visualization
 
 ---
 
-## 🙏 Acknowledgments
+## 📚 Documentation Index
 
-- **Supabase** for the excellent backend-as-a-service platform
-- **React Team** for the amazing frontend framework
-- **Lucide** for the beautiful icon set
-- **Chart.js** for the charting capabilities
-- **Vite** for the fast build tool
+| Document                                       | Purpose                          | Audience          |
+| ---------------------------------------------- | -------------------------------- | ----------------- |
+| [README.md](./README.md)                       | Project overview dan quick start | Everyone          |
+| [DEVELOPMENT_GUIDE.md](./System_Guide/DEVELOPMENT_GUIDE.md) | Complete development guide       | Developers        |
+| [API_REFERENCE.md](./System_Guide/API_REFERENCE.md)         | API documentation                | Developers        |
+| [DEPLOYMENT_GUIDE.md](./System_Guide/DEPLOYMENT_GUIDE.md)   | Deployment instructions          | DevOps/Developers |
+| [MAINTENANCE_GUIDE.md](./System_Guide/MAINTENANCE_GUIDE.md) | Maintenance procedures           | System Admins     |
+| [user-guide.html](./public/user-guide.html)    | User manual                      | End Users         |
 
 ---
 
-**Happy Learning! 📚✨**
+**Quiz English Platform** - Memudahkan pembelajaran bahasa Inggris untuk semua 🚀
 
-For detailed setup instructions, please see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md).
+_Last updated: $(date)_
