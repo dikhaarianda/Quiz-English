@@ -1,0 +1,410 @@
+import React, { useState, useEffect } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { quizService, analyticsService, feedbackService, categoriesService } from '../services/supabaseService.js';
+import { toast } from 'react-toastify';
+import Loading from '../components/Loading.jsx';
+import { BookOpen, Clock, Award, TrendingUp, Play, MessageSquare } from 'lucide-react';
+import { Line, Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, LineElement, ArcElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(LineElement, ArcElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);
+
+const StudentDashboard = () => {
+  const { studentId } = useParams();
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [availableQuizzes, setAvailableQuizzes] = useState([]);
+  const [recentResults, setRecentResults] = useState([]);
+  const [feedback, setFeedback] = useState([]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [quizzesRes, resultsRes, feedbackRes, progressRes] = await Promise.allSettled([
+        categoriesService.getAvailableQuizzes(),
+        quizService.getQuizResults({ limit: 5 }),
+        feedbackService.getFeedback(studentId),
+        analyticsService.getStudentProgress(studentId)
+      ]);
+
+      // Handle available quizzes
+      let quizzes = [];
+      if (quizzesRes.status === 'fulfilled' && quizzesRes.value.success) {
+        const data = quizzesRes.value.data;
+        if (Array.isArray(data)) {
+          // Transform categories with difficulties into flat quiz list
+          data.forEach(category => {
+            if (category.difficulties && Array.isArray(category.difficulties)) {
+              category.difficulties.forEach(difficulty => {
+                quizzes.push({
+                  category_id: category.id,
+                  category_name: category.name,
+                  description: category.description,
+                  difficulty_id: difficulty.id,
+                  difficulty_name: difficulty.name,
+                  question_count: difficulty.question_count || 10
+                });
+              });
+            }
+          });
+        }
+      }
+      setAvailableQuizzes(quizzes);
+
+      // Handle quiz results
+      let results = [];
+      if (resultsRes.status === 'fulfilled' && resultsRes.value.success) {
+        results = resultsRes.value.data || [];
+      }
+      setRecentResults(Array.isArray(results) ? results.slice(0, 5) : []);
+
+      // Handle feedback
+      let feedbackData = [];
+      if (feedbackRes.status === 'fulfilled' && feedbackRes.value.success) {
+        feedbackData = feedbackRes.value.data || [];
+      }
+      setFeedback(Array.isArray(feedbackData) ? feedbackData.slice(0, 5) : []);
+
+      // Handle progress data
+      let dashboardStats = {
+        totalAttempts: 0,
+        averageScore: 0,
+        bestScore: 0,
+        completedQuizzes: 0,
+        categoryProgress: []
+      };
+
+      if (progressRes.status === 'fulfilled' && progressRes.value.success) {
+        const data = progressRes.value.data;
+        dashboardStats = {
+          totalAttempts: data.totalAttempts || 0,
+          averageScore: data.averageScore || 0,
+          bestScore: data.averageScore || 0, // Using average as best for now
+          completedQuizzes: data.totalAttempts || 0,
+          categoryProgress: data.categoryStats ? Object.entries(data.categoryStats).map(([name, stats]) => ({
+            category_name: name,
+            attempts: stats.attempts || 0,
+            average_score: stats.averageScore || 0
+          })) : []
+        };
+      }
+      setDashboardData(dashboardStats);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load dashboard data');
+
+      // Set empty arrays only - no fallback data
+      setAvailableQuizzes([]);
+      setRecentResults([]);
+      setFeedback([]);
+      setDashboardData({
+        totalAttempts: 0,
+        averageScore: 0,
+        bestScore: 0,
+        completedQuizzes: 0,
+        categoryProgress: []
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <Loading message="Loading your dashboard..." />;
+
+  // Prepare chart data with null checks
+  const performanceData = {
+    labels: (recentResults || []).map(result =>
+      new Date(result.completed_at).toLocaleDateString()
+    ).reverse(),
+    datasets: [
+      {
+        label: 'Quiz Scores',
+        data: (recentResults || []).map(result => result.score).reverse(),
+        borderColor: 'rgb(102, 126, 234)',
+        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        tension: 0.4,
+        fill: true
+      }
+    ]
+  };
+
+  const categoryData = dashboardData?.categoryProgress ? {
+    labels: dashboardData.categoryProgress.map(cat => cat.category_name),
+    datasets: [
+      {
+        data: dashboardData.categoryProgress.map(cat => cat.attempts),
+        backgroundColor: [
+          'rgba(102, 126, 234, 0.8)',
+          'rgba(16, 185, 129, 0.8)',
+          'rgba(245, 158, 11, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(139, 92, 246, 0.8)',
+          'rgba(236, 72, 153, 0.8)'
+        ]
+      }
+    ]
+  } : null;
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100
+      }
+    }
+  };
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom'
+      }
+    }
+  };
+
+  return (
+    <div className="container">
+      <div className="main-content">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Student Dashboard</h1>
+            <p className="text-gray-600">Track your English learning progress</p>
+          </div>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="card">
+            <div className="card-body text-center">
+              <BookOpen size={32} className="text-blue-600 mx-auto mb-2" />
+              <h3 className="text-2xl font-bold">{dashboardData?.totalAttempts || dashboardData?.total_attempts || 0}</h3>
+              <p className="text-gray-600">Quizzes Taken</p>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-body text-center">
+              <Award size={32} className="text-green-600 mx-auto mb-2" />
+              <h3 className="text-2xl font-bold">
+                {Math.round(dashboardData?.averageScore || dashboardData?.overall_stats?.average_score || 0)}%
+              </h3>
+              <p className="text-gray-600">Average Score</p>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-body text-center">
+              <TrendingUp size={32} className="text-purple-600 mx-auto mb-2" />
+              <h3 className="text-2xl font-bold">
+                {Math.round(dashboardData?.bestScore || dashboardData?.overall_stats?.best_score || 0)}%
+              </h3>
+              <p className="text-gray-600">Best Score</p>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-body text-center">
+              <Clock size={32} className="text-orange-600 mx-auto mb-2" />
+              <h3 className="text-2xl font-bold">{dashboardData?.completedQuizzes || dashboardData?.overall_stats?.completed_attempts || 0}</h3>
+              <p className="text-gray-600">Completed</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Performance Chart */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">Recent Performance</h2>
+            </div>
+            <div className="card-body">
+              <div style={{ height: '300px' }}>
+                {recentResults && recentResults.length > 0 ? (
+                  <Line data={performanceData} options={chartOptions} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    No quiz results yet. Take your first quiz!
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Category Distribution */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">Quiz Categories</h2>
+            </div>
+            <div className="card-body">
+              <div style={{ height: '300px' }}>
+                {categoryData ? (
+                  <Doughnut data={categoryData} options={doughnutOptions} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    No category data available
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Available Quizzes */}
+        <div className="card mb-8">
+          <div className="card-header">
+            <h2 className="card-title">Available Quizzes</h2>
+          </div>
+          <div className="card-body">
+            {!availableQuizzes || availableQuizzes.length === 0 ? (
+              <div className="text-center py-8">
+                <BookOpen size={48} className="text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Quizzes Available</h3>
+                <p className="text-gray-500">Check back later for new quizzes from your tutors.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {availableQuizzes.map((quiz, index) => (
+                  <div key={`${quiz.category_id}-${quiz.difficulty_id}-${index}`} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="font-semibold text-lg">{quiz.category_name}</h3>
+                      <span className={`badge ${
+                        quiz.difficulty_name === 'Beginner' ? 'badge-success' :
+                        quiz.difficulty_name === 'Intermediate' ? 'badge-warning' : 'badge-error'
+                      }`}>
+                        {quiz.difficulty_name}
+                      </span>
+                    </div>
+
+                    <p className="text-gray-600 text-sm mb-4">{quiz.description}</p>
+
+                    <div className="flex justify-between items-center text-sm text-gray-500 mb-4">
+                      <span>{quiz.question_count} questions</span>
+                      <span>~{Math.ceil(quiz.question_count * 1.5)} min</span>
+                    </div>
+
+                    <Link
+                      to={`/student/${studentId}/quiz-detail/${quiz.category_id}/${quiz.difficulty_id}`}
+                      className="btn btn-primary w-full flex items-center justify-center gap-2"
+                    >
+                      <Play size={16} />
+                      View Quiz
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Results */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">Recent Quiz Results</h2>
+            </div>
+            <div className="card-body">
+              {!recentResults || recentResults.length === 0 ? (
+                <div className="text-center py-8">
+                  <Award size={48} className="text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No quiz results yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentResults.map(result => (
+                    <div key={result.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <h4 className="font-semibold">{result.category_name || result.categories?.name}</h4>
+                        <p className="text-sm text-gray-600">
+                          {result.difficulty_name || result.difficulty_levels?.name} • {new Date(result.completed_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-lg font-bold ${
+                          result.score >= 80 ? 'text-green-600' :
+                          result.score >= 60 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {result.score}%
+                        </div>
+                        <Link
+                          to={`/student/${studentId}/quiz-results/${result.id}`}
+                          className="text-sm text-blue-600 hover:underline"
+                        >
+                          View Details
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Feedback */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title flex items-center gap-2">
+                <MessageSquare size={20} />
+                Recent Feedback
+              </h2>
+            </div>
+            <div className="card-body">
+              {!feedback || feedback.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare size={48} className="text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No feedback yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {feedback.map(item => (
+                    <div key={item.id} className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded-r-lg">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold text-blue-800">
+                          From: {item.tutor_first_name || item.users?.first_name} {item.tutor_last_name || item.users?.last_name}
+                        </h4>
+                        <span className="text-sm text-gray-500">
+                          {new Date(item.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      {(item.category_name || item.quiz_attempts?.categories?.name) && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="badge badge-info text-xs">
+                            {item.category_name || item.quiz_attempts?.categories?.name}
+                          </span>
+                          {(item.score || item.quiz_attempts?.score) && (
+                            <span className="badge badge-success text-xs">
+                              Score: {item.score || item.quiz_attempts?.score}%
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <p className="text-blue-700 text-sm">{item.feedback_text}</p>
+
+                      {item.recommendations && (
+                        <div className="mt-2 p-2 bg-white rounded border-l-4 border-green-500">
+                          <strong className="text-green-700 text-sm">Recommendations:</strong>
+                          <p className="text-green-700 text-sm">{item.recommendations}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default StudentDashboard;

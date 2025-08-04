@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panduan Penggunaan - Quiz English</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #f8fafc;
+            color: #1a202c;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .main-content {
+            padding: 2rem 0;
+            min-height: calc(100vh - 80px);
+        }
+
+        .card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            background-color: #f8fafc;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-3xl {
+            font-size: 1.875rem;
+        }
+
+        .text-lg {
+            font-size: 1.125rem;
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+        }
+
+        .text-xs {
+            font-size: 0.75rem;
+        }
+
+        .font-bold {
+            font-weight: 700;
+        }
+
+        .font-semibold {
+            font-weight: 600;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+
+        .mb-8 {
+            margin-bottom: 2rem;
+        }
+
+        .mb-3 {
+            margin-bottom: 0.75rem;
+        }
+
+        .mb-2 {
+            margin-bottom: 0.5rem;
+        }
+
+        .mt-2 {
+            margin-top: 0.5rem;
+        }
+
+        .grid {
+            display: grid;
+        }
+
+        .grid-cols-1 {
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+        }
+
+        .gap-4 {
+            gap: 1rem;
+        }
+
+        .gap-6 {
+            gap: 1.5rem;
+        }
+
+        .gap-2 {
+            gap: 0.5rem;
+        }
+
+        .p-4 {
+            padding: 1rem;
+        }
+
+        .rounded-lg {
+            border-radius: 0.5rem;
+        }
+
+        .border {
+            border: 1px solid #e5e7eb;
+        }
+
+        .text-gray-600 {
+            color: #4b5563;
+        }
+
+        .text-gray-700 {
+            color: #374151;
+        }
+
+        .text-blue-600 {
+            color: #2563eb;
+        }
+
+        .text-blue-800 {
+            color: #1e40af;
+        }
+
+        .text-green-600 {
+            color: #16a34a;
+        }
+
+        .text-green-800 {
+            color: #166534;
+        }
+
+        .text-purple-600 {
+            color: #9333ea;
+        }
+
+        .text-purple-800 {
+            color: #6b21a8;
+        }
+
+        .text-yellow-600 {
+            color: #ca8a04;
+        }
+
+        .text-yellow-800 {
+            color: #92400e;
+        }
+
+        .text-orange-600 {
+            color: #ea580c;
+        }
+
+        .bg-blue-50 {
+            background-color: #eff6ff;
+        }
+
+        .bg-green-50 {
+            background-color: #f0fdf4;
+        }
+
+        .bg-purple-50 {
+            background-color: #faf5ff;
+        }
+
+        .bg-yellow-50 {
+            background-color: #fefce8;
+        }
+
+        .icon {
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+            margin: 0 auto 0.5rem;
+        }
+
+        .icon-sm {
+            width: 16px;
+            height: 16px;
+            margin-top: 0.125rem;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .items-start {
+            align-items: flex-start;
+        }
+
+        .justify-center {
+            justify-content: center;
+        }
+
+        .space-y-2 > * + * {
+            margin-top: 0.5rem;
+        }
+
+        .rounded-full {
+            border-radius: 9999px;
+        }
+
+        .w-5 {
+            width: 1.25rem;
+        }
+
+        .h-5 {
+            height: 1.25rem;
+        }
+
+        .bg-blue-600 {
+            background-color: #2563eb;
+        }
+
+        .bg-green-600 {
+            background-color: #16a34a;
+        }
+
+        .bg-purple-600 {
+            background-color: #9333ea;
+        }
+
+        .text-white {
+            color: white;
+        }
+
+        ul {
+            list-style: none;
+        }
+
+        ol {
+            list-style: none;
+        }
+
+        @media (min-width: 768px) {
+            .md\:grid-cols-2 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .md\:grid-cols-3 {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .lg\:grid-cols-2 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .emoji {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold mb-4">Panduan Penggunaan Quiz English</h1>
+                <p class="text-gray-600 text-lg">Pelajari cara menggunakan platform pembelajaran bahasa Inggris ini dengan mudah</p>
+            </div>
+
+            <!-- Overview -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        📚 Tentang Platform
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <p class="text-gray-700 mb-4">
+                        Quiz English adalah platform pembelajaran bahasa Inggris yang memungkinkan siswa untuk mengerjakan quiz, 
+                        tutor untuk membuat soal dan memberikan feedback, serta admin untuk mengelola seluruh sistem.
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="text-center p-4 bg-blue-50 rounded-lg">
+                            <div class="emoji">👥</div>
+                            <h3 class="font-semibold">3 Role Pengguna</h3>
+                            <p class="text-sm text-gray-600">Student, Tutor, Super Tutor</p>
+                        </div>
+                        <div class="text-center p-4 bg-green-50 rounded-lg">
+                            <div class="emoji">🏆</div>
+                            <h3 class="font-semibold">Quiz Interaktif</h3>
+                            <p class="text-sm text-gray-600">Berbagai kategori dan tingkat kesulitan</p>
+                        </div>
+                        <div class="text-center p-4 bg-purple-50 rounded-lg">
+                            <div class="emoji">💬</div>
+                            <h3 class="font-semibold">Feedback Personal</h3>
+                            <p class="text-sm text-gray-600">Bimbingan langsung dari tutor</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Guide -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title text-blue-600">
+                        👨‍🎓 Panduan untuk Student
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="font-semibold mb-3 text-blue-800">Fitur Utama:</h3>
+                            <ul class="space-y-2 text-sm">
+                                <li class="flex items-start gap-2">
+                                    <span class="text-green-600">▶️</span>
+                                    <span><strong>Mengerjakan Quiz:</strong> Pilih kategori dan tingkat kesulitan, lalu mulai quiz</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-yellow-600">🏆</span>
+                                    <span><strong>Melihat Hasil:</strong> Cek skor dan analisis jawaban setelah selesai quiz</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-purple-600">📊</span>
+                                    <span><strong>Progress Tracking:</strong> Pantau perkembangan belajar melalui grafik dan statistik</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-blue-600">💬</span>
+                                    <span><strong>Menerima Feedback:</strong> Baca saran dan rekomendasi dari tutor</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold mb-3 text-blue-800">Cara Menggunakan:</h3>
+                            <ol class="space-y-2 text-sm">
+                                <li class="flex gap-2">
+                                    <span class="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">1</span>
+                                    <span>Login dengan akun student Anda</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">2</span>
+                                    <span>Pilih quiz yang tersedia di dashboard</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">3</span>
+                                    <span>Kerjakan soal dengan teliti</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">4</span>
+                                    <span>Lihat hasil dan feedback dari tutor</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">5</span>
+                                    <span>Pelajari rekomendasi untuk meningkatkan kemampuan</span>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tutor Guide -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title text-green-600">
+                        👨‍🏫 Panduan untuk Tutor
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="font-semibold mb-3 text-green-800">Fitur Utama:</h3>
+                            <ul class="space-y-2 text-sm">
+                                <li class="flex items-start gap-2">
+                                    <span class="text-blue-600">➕</span>
+                                    <span><strong>Membuat Soal:</strong> Buat pertanyaan quiz dengan berbagai kategori dan tingkat kesulitan</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-purple-600">💬</span>
+                                    <span><strong>Memberikan Feedback:</strong> Berikan saran dan rekomendasi kepada siswa</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-orange-600">👁️</span>
+                                    <span><strong>Monitor Progress:</strong> Pantau perkembangan siswa melalui dashboard</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-green-600">📊</span>
+                                    <span><strong>Analisis Performa:</strong> Lihat statistik dan grafik performa siswa</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold mb-3 text-green-800">Cara Menggunakan:</h3>
+                            <ol class="space-y-2 text-sm">
+                                <li class="flex gap-2">
+                                    <span class="bg-green-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">1</span>
+                                    <span>Login dengan akun tutor Anda</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-green-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">2</span>
+                                    <span>Buat soal melalui menu "Question Management"</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-green-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">3</span>
+                                    <span>Monitor hasil quiz siswa di dashboard</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-green-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">4</span>
+                                    <span>Berikan feedback melalui menu "Feedback Management"</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-green-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">5</span>
+                                    <span>Analisis progress siswa untuk bimbingan yang lebih baik</span>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Super Tutor Guide -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title text-purple-600">
+                        👨‍💼 Panduan untuk Super Tutor (Admin)
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="font-semibold mb-3 text-purple-800">Fitur Utama:</h3>
+                            <ul class="space-y-2 text-sm">
+                                <li class="flex items-start gap-2">
+                                    <span class="text-blue-600">👤➕</span>
+                                    <span><strong>Manajemen User:</strong> Kelola akun student, tutor, dan admin lainnya</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-green-600">📚</span>
+                                    <span><strong>Oversight Soal:</strong> Pantau dan kelola semua soal yang dibuat tutor</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-orange-600">📊</span>
+                                    <span><strong>Analytics Platform:</strong> Lihat statistik keseluruhan platform</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-purple-600">⚙️</span>
+                                    <span><strong>System Management:</strong> Kelola pengaturan dan konfigurasi sistem</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold mb-3 text-purple-800">Cara Menggunakan:</h3>
+                            <ol class="space-y-2 text-sm">
+                                <li class="flex gap-2">
+                                    <span class="bg-purple-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">1</span>
+                                    <span>Login dengan akun super tutor</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-purple-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">2</span>
+                                    <span>Kelola user melalui menu "User Management"</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-purple-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">3</span>
+                                    <span>Monitor aktivitas platform di dashboard admin</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-purple-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">4</span>
+                                    <span>Review dan approve soal-soal yang dibuat tutor</span>
+                                </li>
+                                <li class="flex gap-2">
+                                    <span class="bg-purple-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">5</span>
+                                    <span>Analisis performa keseluruhan untuk pengembangan platform</span>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tips & Best Practices -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title text-yellow-600">
+                        💡 Tips & Best Practices
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="font-semibold mb-3 text-yellow-800">Untuk Student:</h3>
+                            <ul class="space-y-2 text-sm text-gray-700">
+                                <li>• Kerjakan quiz secara rutin untuk hasil yang optimal</li>
+                                <li>• Baca feedback dari tutor dengan seksama</li>
+                                <li>• Mulai dari tingkat kesulitan yang sesuai kemampuan</li>
+                                <li>• Gunakan grafik progress untuk memantau perkembangan</li>
+                                <li>• Jangan ragu bertanya kepada tutor jika ada kesulitan</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold mb-3 text-yellow-800">Untuk Tutor:</h3>
+                            <ul class="space-y-2 text-sm text-gray-700">
+                                <li>• Buat soal yang bervariasi dan menantang</li>
+                                <li>• Berikan feedback yang konstruktif dan spesifik</li>
+                                <li>• Monitor progress siswa secara berkala</li>
+                                <li>• Sesuaikan tingkat kesulitan dengan kemampuan siswa</li>
+                                <li>• Gunakan data analytics untuk meningkatkan metode pengajaran</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Demo Accounts Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🔑 Akun Demo untuk Testing</h2>
+                </div>
+                <div class="card-body">
+                    <p class="text-gray-700 mb-4">
+                        Gunakan akun demo berikut untuk mencoba fitur-fitur platform:
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="border rounded-lg p-4 bg-blue-50">
+                            <h3 class="font-semibold text-blue-800 mb-2">Super Tutor (Admin)</h3>
+                            <p class="text-sm"><strong>Username:</strong> admin</p>
+                            <p class="text-sm"><strong>Password:</strong> admin123</p>
+                            <p class="text-xs text-gray-600 mt-2">Akses penuh ke semua fitur platform</p>
+                        </div>
+                        <div class="border rounded-lg p-4 bg-green-50">
+                            <h3 class="font-semibold text-green-800 mb-2">Tutor</h3>
+                            <p class="text-sm"><strong>Username:</strong> sarah_tutor</p>
+                            <p class="text-sm"><strong>Password:</strong> password123</p>
+                            <p class="text-xs text-gray-600 mt-2">Dapat membuat soal dan memberikan feedback</p>
+                        </div>
+                        <div class="border rounded-lg p-4 bg-purple-50">
+                            <h3 class="font-semibold text-purple-800 mb-2">Student</h3>
+                            <p class="text-sm"><strong>Username:</strong> john_student</p>
+                            <p class="text-sm"><strong>Password:</strong> password123</p>
+                            <p class="text-xs text-gray-600 mt-2">Dapat mengerjakan quiz dan melihat progress</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
