@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { quizService, analyticsService, feedbackService, categoriesService } from '../services/supabaseService.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { toast } from 'react-toastify';
 import Loading from '../components/Loading.jsx';
 import { BookOpen, Clock, Award, TrendingUp, Play, MessageSquare } from 'lucide-react';
@@ -11,6 +12,7 @@ ChartJS.register(LineElement, ArcElement, CategoryScale, LinearScale, PointEleme
 
 const StudentDashboard = () => {
   const { studentId } = useParams();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
   const [availableQuizzes, setAvailableQuizzes] = useState([]);
@@ -19,15 +21,17 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [user]);
 
   const fetchDashboardData = async () => {
     try {
+      const currentStudentId = studentId || user?.id;
+      
       const [quizzesRes, resultsRes, feedbackRes, progressRes] = await Promise.allSettled([
         categoriesService.getAvailableQuizzes(),
-        quizService.getQuizResults({ limit: 5 }),
-        feedbackService.getFeedback(studentId),
-        analyticsService.getStudentProgress(studentId)
+        quizService.getQuizResults({ student_id: currentStudentId, limit: 5 }),
+        feedbackService.getFeedback(currentStudentId),
+        analyticsService.getStudentProgress(currentStudentId)
       ]);
 
       // Handle available quizzes
@@ -51,6 +55,8 @@ const StudentDashboard = () => {
             }
           });
         }
+      } else {
+        console.log('Available quizzes error:', quizzesRes.reason);
       }
       setAvailableQuizzes(quizzes);
 
@@ -58,6 +64,8 @@ const StudentDashboard = () => {
       let results = [];
       if (resultsRes.status === 'fulfilled' && resultsRes.value.success) {
         results = resultsRes.value.data || [];
+      } else {
+        console.log('Quiz results error:', resultsRes.reason);
       }
       setRecentResults(Array.isArray(results) ? results.slice(0, 5) : []);
 
@@ -65,6 +73,8 @@ const StudentDashboard = () => {
       let feedbackData = [];
       if (feedbackRes.status === 'fulfilled' && feedbackRes.value.success) {
         feedbackData = feedbackRes.value.data || [];
+      } else {
+        console.log('Feedback error:', feedbackRes.reason);
       }
       setFeedback(Array.isArray(feedbackData) ? feedbackData.slice(0, 5) : []);
 
@@ -82,7 +92,7 @@ const StudentDashboard = () => {
         dashboardStats = {
           totalAttempts: data.totalAttempts || 0,
           averageScore: data.averageScore || 0,
-          bestScore: data.averageScore || 0, // Using average as best for now
+          bestScore: data.bestScore || data.averageScore || 0,
           completedQuizzes: data.totalAttempts || 0,
           categoryProgress: data.categoryStats ? Object.entries(data.categoryStats).map(([name, stats]) => ({
             category_name: name,
@@ -90,6 +100,19 @@ const StudentDashboard = () => {
             average_score: stats.averageScore || 0
           })) : []
         };
+      } else {
+        console.log('Progress error:', progressRes.reason);
+        // Fallback: use recent results to calculate basic stats
+        if (results.length > 0) {
+          const scores = results.map(r => r.score);
+          dashboardStats = {
+            totalAttempts: results.length,
+            averageScore: Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length),
+            bestScore: Math.max(...scores),
+            completedQuizzes: results.length,
+            categoryProgress: []
+          };
+        }
       }
       setDashboardData(dashboardStats);
 
@@ -97,7 +120,7 @@ const StudentDashboard = () => {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
 
-      // Set empty arrays only - no fallback data
+      // Set empty arrays on error
       setAvailableQuizzes([]);
       setRecentResults([]);
       setFeedback([]);
@@ -117,13 +140,13 @@ const StudentDashboard = () => {
 
   // Prepare chart data with null checks
   const performanceData = {
-    labels: (recentResults || []).map(result =>
-      new Date(result.completed_at).toLocaleDateString()
+    labels: (recentResults || []).map((result, index) =>
+      result.completed_at ? new Date(result.completed_at).toLocaleDateString() : `Quiz ${index + 1}`
     ).reverse(),
     datasets: [
       {
         label: 'Quiz Scores',
-        data: (recentResults || []).map(result => result.score).reverse(),
+        data: (recentResults || []).map(result => result.score || 0).reverse(),
         borderColor: 'rgb(102, 126, 234)',
         backgroundColor: 'rgba(102, 126, 234, 0.1)',
         tension: 0.4,
@@ -132,7 +155,7 @@ const StudentDashboard = () => {
     ]
   };
 
-  const categoryData = dashboardData?.categoryProgress ? {
+  const categoryData = dashboardData?.categoryProgress && dashboardData.categoryProgress.length > 0 ? {
     labels: dashboardData.categoryProgress.map(cat => cat.category_name),
     datasets: [
       {
@@ -170,6 +193,8 @@ const StudentDashboard = () => {
     }
   };
 
+  const currentStudentId = studentId || user?.id;
+
   return (
     <div className="container">
       <div className="main-content">
@@ -185,7 +210,7 @@ const StudentDashboard = () => {
           <div className="card">
             <div className="card-body text-center">
               <BookOpen size={32} className="text-blue-600 mx-auto mb-2" />
-              <h3 className="text-2xl font-bold">{dashboardData?.totalAttempts || dashboardData?.total_attempts || 0}</h3>
+              <h3 className="text-2xl font-bold">{dashboardData?.totalAttempts || 0}</h3>
               <p className="text-gray-600">Quizzes Taken</p>
             </div>
           </div>
@@ -194,7 +219,7 @@ const StudentDashboard = () => {
             <div className="card-body text-center">
               <Award size={32} className="text-green-600 mx-auto mb-2" />
               <h3 className="text-2xl font-bold">
-                {Math.round(dashboardData?.averageScore || dashboardData?.overall_stats?.average_score || 0)}%
+                {dashboardData?.averageScore || 0}%
               </h3>
               <p className="text-gray-600">Average Score</p>
             </div>
@@ -204,7 +229,7 @@ const StudentDashboard = () => {
             <div className="card-body text-center">
               <TrendingUp size={32} className="text-purple-600 mx-auto mb-2" />
               <h3 className="text-2xl font-bold">
-                {Math.round(dashboardData?.bestScore || dashboardData?.overall_stats?.best_score || 0)}%
+                {dashboardData?.bestScore || 0}%
               </h3>
               <p className="text-gray-600">Best Score</p>
             </div>
@@ -213,7 +238,7 @@ const StudentDashboard = () => {
           <div className="card">
             <div className="card-body text-center">
               <Clock size={32} className="text-orange-600 mx-auto mb-2" />
-              <h3 className="text-2xl font-bold">{dashboardData?.completedQuizzes || dashboardData?.overall_stats?.completed_attempts || 0}</h3>
+              <h3 className="text-2xl font-bold">{dashboardData?.completedQuizzes || 0}</h3>
               <p className="text-gray-600">Completed</p>
             </div>
           </div>
@@ -291,7 +316,7 @@ const StudentDashboard = () => {
                     </div>
 
                     <Link
-                      to={`/student/${studentId}/quiz-detail/${quiz.category_id}/${quiz.difficulty_id}`}
+                      to={`/student/${currentStudentId}/quiz-detail/${quiz.category_id}/${quiz.difficulty_id}`}
                       className="btn btn-primary w-full flex items-center justify-center gap-2"
                     >
                       <Play size={16} />
@@ -321,9 +346,9 @@ const StudentDashboard = () => {
                   {recentResults.map(result => (
                     <div key={result.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                       <div>
-                        <h4 className="font-semibold">{result.category_name || result.categories?.name}</h4>
+                        <h4 className="font-semibold">{result.category_name || result.categories?.name || 'Quiz'}</h4>
                         <p className="text-sm text-gray-600">
-                          {result.difficulty_name || result.difficulty_levels?.name} • {new Date(result.completed_at).toLocaleDateString()}
+                          {result.difficulty_name || result.difficulty_levels?.name || 'Unknown'} • {result.completed_at ? new Date(result.completed_at).toLocaleDateString() : 'Recently'}
                         </p>
                       </div>
                       <div className="text-right">
@@ -331,10 +356,10 @@ const StudentDashboard = () => {
                           result.score >= 80 ? 'text-green-600' :
                           result.score >= 60 ? 'text-yellow-600' : 'text-red-600'
                         }`}>
-                          {result.score}%
+                          {result.score || 0}%
                         </div>
                         <Link
-                          to={`/student/${studentId}/quiz-results/${result.id}`}
+                          to={`/student/${currentStudentId}/quiz-results/${result.id}`}
                           className="text-sm text-blue-600 hover:underline"
                         >
                           View Details
@@ -367,10 +392,10 @@ const StudentDashboard = () => {
                     <div key={item.id} className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded-r-lg">
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="font-semibold text-blue-800">
-                          From: {item.tutor_first_name || item.users?.first_name} {item.tutor_last_name || item.users?.last_name}
+                          From: {item.tutor_first_name || item.users?.first_name || 'Tutor'} {item.tutor_last_name || item.users?.last_name || ''}
                         </h4>
                         <span className="text-sm text-gray-500">
-                          {new Date(item.created_at).toLocaleDateString()}
+                          {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recently'}
                         </span>
                       </div>
 

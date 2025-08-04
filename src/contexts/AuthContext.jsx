@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase, getCurrentUser } from '../lib/supabase.js';
+import { supabase } from '../lib/supabase.js';
 import { toast } from 'react-toastify';
 
 const AuthContext = createContext({});
@@ -15,46 +15,78 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    // Get initial session
-    getInitialSession();
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        // Get initial session with better error handling
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          if (mounted) {
+            setUser(null);
+            setLoading(false);
+            setInitialized(true);
+          }
+          return;
+        }
+
+        if (session?.user && mounted) {
+          await loadUserProfile(session.user);
+        } else if (mounted) {
+          setUser(null);
+        }
+
+        if (mounted) {
+          setLoading(false);
+          setInitialized(true);
+        }
+      } catch (error) {
+        console.error('Error in initializeAuth:', error);
+        if (mounted) {
+          setUser(null);
+          setLoading(false);
+          setInitialized(true);
+        }
+      }
+    };
+
+    // Initialize auth
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
         
-        if (session?.user) {
-          await loadUserProfile(session.user);
-        } else {
+        if (!mounted) return;
+
+        try {
+          if (session?.user) {
+            await loadUserProfile(session.user);
+          } else {
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Error handling auth state change:', error);
           setUser(null);
         }
-        
-        setLoading(false);
+
+        if (initialized) {
+          setLoading(false);
+        }
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const getInitialSession = async () => {
-    try {
-      const { user, error } = await getCurrentUser();
-      
-      if (error) {
-        console.error('Error getting initial session:', error);
-        setUser(null);
-      } else {
-        setUser(user);
-      }
-    } catch (error) {
-      console.error('Error in getInitialSession:', error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [initialized]);
 
   const loadUserProfile = async (authUser) => {
     try {
@@ -66,8 +98,12 @@ export const AuthProvider = ({ children }) => {
 
       if (error) {
         console.error('Error loading user profile:', error);
-        // If profile doesn't exist, user might need to complete registration
-        setUser(authUser);
+        // If profile doesn't exist, use auth user data
+        setUser({
+          id: authUser.id,
+          email: authUser.email,
+          ...authUser.user_metadata
+        });
         return;
       }
 
@@ -77,7 +113,12 @@ export const AuthProvider = ({ children }) => {
       });
     } catch (error) {
       console.error('Error in loadUserProfile:', error);
-      setUser(authUser);
+      // Fallback to auth user data
+      setUser({
+        id: authUser.id,
+        email: authUser.email,
+        ...authUser.user_metadata
+      });
     }
   };
 
@@ -155,14 +196,19 @@ export const AuthProvider = ({ children }) => {
         p_username: username
       });
 
-      if (error || !data.success) {
+      if (error || !data?.success) {
         const errorMessage = data?.error || error?.message || 'Username not found';
         toast.error(errorMessage);
         return { success: false, error: errorMessage };
       }
 
       // Now login with the retrieved email
-      const email = data.data.email;
+      const email = data.data?.email;
+      if (!email) {
+        toast.error('Username not found');
+        return { success: false, error: 'Username not found' };
+      }
+
       return await login(email, password);
     } catch (error) {
       console.error('Username login error:', error);
@@ -275,6 +321,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
+    initialized,
     register,
     login,
     loginWithUsername,

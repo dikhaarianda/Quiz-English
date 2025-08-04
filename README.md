@@ -118,11 +118,11 @@ A comprehensive web-based English learning platform with role-based access, feat
 
 For testing purposes, you can use these demo accounts:
 
-| Role        | Username     | Password    | Email            |
-| ----------- | ------------ | ----------- | ---------------- |
-| Super Tutor | admin        | admin123    | admin@demo.com   |
-| Tutor       | sarah_tutor  | password123 | tutor@demo.com   |
-| Student     | john_student | password123 | student@demo.com |
+| Role        | Username     | Password    | Email                   |
+| ----------- | ------------ | ----------- | ----------------------- |
+| Super Tutor | admin        | admin123    | admin@englishquiz.com   |
+| Tutor       | tutor1  | password123 | tutor1@englishquiz.com  |
+| Student     | student1 | password123 | student1@englishquiz.com|
 
 _Note: Create these accounts through the registration process first._
 

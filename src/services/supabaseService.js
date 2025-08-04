@@ -469,6 +469,61 @@ export const analyticsService = {
     } catch (error) {
       return handleResponse(null, error);
     }
+  },
+
+  // NEW: Add System Analytics function for Super Tutor Dashboard
+  async getSystemAnalytics() {
+    try {
+      // Get user statistics
+      const { data: userStats } = await supabase
+        .from('users')
+        .select('role')
+        .eq('is_active', true);
+
+      // Get question count
+      const { count: questionCount } = await supabase
+        .from('questions')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+
+      // Get quiz attempts count
+      const { count: quizCount } = await supabase
+        .from('quiz_attempts')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_completed', true);
+
+      // Get average score
+      const { data: scoreData } = await supabase
+        .from('quiz_attempts')
+        .select('score')
+        .eq('is_completed', true);
+
+      // Process user stats by role
+      const roleStats = {};
+      if (userStats) {
+        userStats.forEach(user => {
+          roleStats[user.role] = (roleStats[user.role] || 0) + 1;
+        });
+      }
+
+      // Calculate average score
+      const averageScore = scoreData && scoreData.length > 0 
+        ? Math.round(scoreData.reduce((sum, item) => sum + item.score, 0) / scoreData.length)
+        : 0;
+
+      const analytics = {
+        totalUsers: userStats ? userStats.length : 0,
+        totalQuestions: questionCount || 0,
+        totalQuizzes: quizCount || 0,
+        averageScore: averageScore,
+        userStats: roleStats
+      };
+
+      return handleResponse(analytics, null);
+    } catch (error) {
+      console.error('System analytics error:', error);
+      return handleResponse(null, error);
+    }
   }
 };
 
@@ -603,20 +658,50 @@ export const usersService = {
     try {
       let query = supabase
         .from('users')
-        .select('*')
-        .eq('is_active', true);
+        .select('*');
 
-      if (params.role) {
+      // Apply role filter - remove is_active filter to get all users
+      if (params.role && params.role !== 'all') {
         query = query.eq('role', params.role);
       }
 
       if (params.search) {
-        query = query.or(`first_name.ilike.%${params.search}%,last_name.ilike.%${params.search}%,username.ilike.%${params.search}%`);
+        query = query.or(`first_name.ilike.%${params.search}%,last_name.ilike.%${params.search}%,username.ilike.%${params.search}%,email.ilike.%${params.search}%`);
       }
+
+      // Apply pagination if specified
+      if (params.page && params.limit) {
+        const from = (params.page - 1) * params.limit;
+        const to = from + params.limit - 1;
+        query = query.range(from, to);
+      } else if (params.limit) {
+        query = query.limit(params.limit);
+      }
+
+      // Get total count for pagination
+      const { count } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
 
       const { data, error } = await query.order('created_at', { ascending: false });
 
-      return handleResponse(data, error);
+      if (error) {
+        return handleResponse(null, error);
+      }
+
+      // Prepare response with pagination info
+      const result = {
+        users: data || [],
+        pagination: params.page ? {
+          currentPage: params.page,
+          totalPages: Math.ceil(count / params.limit),
+          totalCount: count,
+          hasNext: params.page < Math.ceil(count / params.limit),
+          hasPrev: params.page > 1
+        } : null
+      };
+
+      return handleResponse(result, null);
     } catch (error) {
       return handleResponse(null, error);
     }
@@ -670,13 +755,19 @@ export const usersService = {
 
   async getStudents() {
     try {
-      const { data, error } = await supabase.rpc('get_students_for_tutor');
+      // Fallback if RPC function doesn't exist
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('role', 'student')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
       if (error) {
         return handleResponse(null, error);
       }
 
-      return data;
+      return handleResponse({ users: data }, null);
     } catch (error) {
       return handleResponse(null, error);
     }
@@ -684,18 +775,21 @@ export const usersService = {
 
   async createUser(userData) {
     try {
-      // This would typically be handled by the registration process
-      // But we can provide a function for admin user creation
-      const { data, error } = await supabase.auth.admin.createUser({
-        email: userData.email,
-        password: userData.password,
-        user_metadata: {
+      // Since we can't use admin.createUser in client-side, 
+      // we'll create a user record directly in the users table
+      // This assumes user registration happens through auth flow
+      const { data, error } = await supabase
+        .from('users')
+        .insert([{
           username: userData.username,
-          first_name: userData.first_name,
-          last_name: userData.last_name,
-          role: userData.role
-        }
-      });
+          email: userData.email,
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          role: userData.role,
+          is_active: userData.isActive !== undefined ? userData.isActive : true
+        }])
+        .select()
+        .single();
 
       return handleResponse(data, error, 'User created successfully');
     } catch (error) {
@@ -705,9 +799,18 @@ export const usersService = {
 
   async updateUser(id, userData) {
     try {
+      const updateData = {
+        username: userData.username,
+        email: userData.email,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        role: userData.role,
+        is_active: userData.isActive
+      };
+
       const { data, error } = await supabase
         .from('users')
-        .update(userData)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
